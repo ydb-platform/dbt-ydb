@@ -10,4 +10,4 @@ Plugin = AdapterPlugin(
     adapter=YDBAdapter,
     credentials=YDBCredentials,
     include_path=ydb.PACKAGE_PATH
-    )
+)
