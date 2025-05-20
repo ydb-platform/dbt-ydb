@@ -34,7 +34,7 @@ dbt docs: https://docs.getdbt.com/docs/contributing/building-a-new-adapter
      create schema if not exists {{ relation.without_identifier().include(database=False) }}
    {%- endcall -%}
  {% endmacro %}
- 
+
 */
 
 {% macro ydb__create_schema(relation) -%}
@@ -135,8 +135,8 @@ dbt docs: https://docs.getdbt.com/docs/contributing/building-a-new-adapter
 */
 
 {% macro ydb__list_relations_without_caching(schema_relation) -%}
-'''creates a table of relations withough using local caching.'''
-{% endmacro %}
+  {{ return(adapter.list_relations_without_caching(schema_relation)) }}
+{%- endmacro %}
 
 {% macro ydb__list_schemas(database) -%}
 '''Returns a table of unique schemas.'''
