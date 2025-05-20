@@ -34,7 +34,7 @@ dbt docs: https://docs.getdbt.com/docs/contributing/building-a-new-adapter
      create schema if not exists {{ relation.without_identifier().include(database=False) }}
    {%- endcall -%}
  {% endmacro %}
- 
+
 */
 
 {% macro ydb__create_schema(relation) -%}
@@ -60,6 +60,11 @@ dbt docs: https://docs.getdbt.com/docs/contributing/building-a-new-adapter
   1. If database exists
   2. Create a new schema if passed schema does not exist already
 */
+  {%- set obj_type = relation.type -%}
+  {% call statement('drop_relation', auto_begin=False) -%}
+    drop {{ obj_type }} if exists {{ relation }}
+  {%- endcall %}
+
 {% endmacro %}
 
 {% macro ydb__drop_schema(relation) -%}
@@ -134,10 +139,13 @@ dbt docs: https://docs.getdbt.com/docs/contributing/building-a-new-adapter
 
 */
 
+/*
 {% macro ydb__list_relations_without_caching(schema_relation) -%}
-'''creates a table of relations withough using local caching.'''
-{% endmacro %}
+  {{ return(adapter.list_relations_without_caching(schema_relation)) }}
+{%- endmacro %}
+*/
 
+/*
 {% macro ydb__list_schemas(database) -%}
 '''Returns a table of unique schemas.'''
 /*
@@ -145,6 +153,7 @@ dbt docs: https://docs.getdbt.com/docs/contributing/building-a-new-adapter
   2. create a table with names
 */
 {% endmacro %}
+*/
 
 {% macro ydb__rename_relation(from_relation, to_relation) -%}
 '''Renames a relation in the database.'''
@@ -152,6 +161,10 @@ dbt docs: https://docs.getdbt.com/docs/contributing/building-a-new-adapter
   1. Search for a specific relation name
   2. alter table by targeting specific name and passing in new name
 */
+  {% if from_relation.type == "table" %}
+    {{ adapter.rename_table(from_relation, to_relation) }}
+
+  {% endif %}
 {% endmacro %}
 
 {% macro ydb__truncate_relation(relation) -%}
