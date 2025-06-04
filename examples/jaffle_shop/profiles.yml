@@ -1,0 +1,9 @@
+jaffle_shop:
+  target: dev
+  outputs:
+    dev:
+      type: ydb
+      database: /local
+      host: localhost
+      schema: jaffle_shop
+      port: 2136

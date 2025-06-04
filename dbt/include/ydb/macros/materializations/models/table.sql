@@ -2,7 +2,6 @@
   {%- set sql_header = config.get('sql_header', none) -%}
   {%- set primary_key_column = model['config'].get('primary_key', 'id') -%}
 
-
   {{ sql_header if sql_header is not none }}
 
   create {% if temporary: -%}temporary{%- endif %} table
