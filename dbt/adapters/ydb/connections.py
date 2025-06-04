@@ -1,8 +1,9 @@
 from contextlib import contextmanager
 from dataclasses import dataclass
 import dbt.exceptions
+from dbt.adapters.contracts.connection import AdapterResponse
 from dbt.adapters.contracts.connection import Credentials
-from dbt.adapters.contracts.connection import AdapterResponse, Connection
+from dbt.adapters.contracts.connection import Connection
 import time
 from dbt.adapters.sql import SQLConnectionManager
 
@@ -10,10 +11,13 @@ from dbt.adapters.events.logging import AdapterLogger
 
 import ydb_dbapi as dbapi
 
-from typing import Any, Optional, Tuple
+from typing import Any, Optional, Tuple, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import agate
 
 
-logger = AdapterLogger('dbt_ydb')
+logger = AdapterLogger("YDB")
 
 
 @dataclass
@@ -24,18 +28,14 @@ class YDBCredentials(Credentials):
     """
 
     # Add credentials members here, like:
-    host: str = 'localhost'
+    host: str = "localhost"
     port: int = 2136
     username: Optional[str] = None
     password: Optional[str] = None
 
-    schema: Optional[str] = None
+    schema: str = ""
 
-    _ALIASES = {
-        "dbname":"database",
-        "pass":"password",
-        "user":"username"
-    }
+    _ALIASES = {"dbname": "database", "pass": "password", "user": "username"}
 
     @property
     def type(self):
@@ -54,20 +54,21 @@ class YDBCredentials(Credentials):
         """
         List of keys to display in the `dbt debug` output.
         """
-        return ("host","port","username","user")
+        return ("host", "port", "username", "user", "database", "schema")
 
     def _get_ydb_credentials(self):
         import ydb
 
         if self.username is not None:
-            return ydb.StaticCredentials.from_user_password(self.username, self.password)
+            return ydb.StaticCredentials.from_user_password(
+                self.username, self.password
+            )
 
         return ydb.AnonymousCredentials()
 
 
 class YDBConnectionManager(SQLConnectionManager):
     TYPE = "ydb"
-
 
     @contextmanager
     def exception_handler(self, sql: str):
@@ -82,7 +83,7 @@ class YDBConnectionManager(SQLConnectionManager):
             self.release()
 
             logger.debug("YDB error: {}".format(str(exc)))
-            raise dbt.exceptions.DbtDatabaseError(str(exc))
+            raise dbt.exceptions.DbtRuntimeError(str(exc))
         except Exception as exc:
             logger.debug("Error running SQL: {}".format(sql))
             logger.debug("Rolling back transaction.")
@@ -120,22 +121,40 @@ class YDBConnectionManager(SQLConnectionManager):
 
     @classmethod
     def get_response(cls, _):
-        return 'OK'
+        return "OK"
 
     def cancel(self, connection):
         """
         Gets a connection object and attempts to cancel any ongoing queries.
         """
         connection_name = connection.name
-        logger.debug('Cancelling query \'{}\'', connection_name)
+        logger.debug("Cancelling query '{}'", connection_name)
         connection.handle.close()
-        logger.debug('Cancel query \'{}\'', connection_name)
+        logger.debug("Cancel query '{}'", connection_name)
 
     def begin(self):
         pass
 
     def commit(self):
         pass
+
+    def execute(
+        self,
+        sql: str,
+        auto_begin: bool = False,
+        fetch: bool = False,
+        limit: Optional[int] = None,
+    ) -> Tuple[AdapterResponse, "agate.Table"]:
+        from dbt_common.clients.agate_helper import empty_table
+
+        sql = self._add_query_comment(sql)
+        _, cursor = self.add_query(sql, auto_begin)
+        response = self.get_response(cursor)
+        if fetch:
+            table = self.get_result_from_cursor(cursor, limit)
+        else:
+            table = empty_table()
+        return AdapterResponse(response), table
 
     def add_query(
         self,
@@ -148,10 +167,13 @@ class YDBConnectionManager(SQLConnectionManager):
         conn = self.get_thread_connection()
         dbapi_connection = conn.handle
         with self.exception_handler(sql):
-            logger.debug(f'On {conn.name}: {sql}...')
+            logger.debug(f"On {conn.name}: {sql}...")
             pre = time.time()
-            with dbapi_connection.cursor() as cursor:
-                cursor.execute(sql)
-                status = self.get_response(cursor)
-                logger.debug(f'SQL status: {status} in {(time.time() - pre):0.2f} seconds')
-                return conn, None
+            cursor = dbapi_connection.cursor()
+            logger.info(f"Try to execute SQL: \n{sql}")
+            cursor.execute_scheme(sql) # TODO: split
+            status = self.get_response(cursor)
+            logger.info(
+                f"SQL status: {status} in {(time.time() - pre):0.2f} seconds"
+            )
+            return conn, cursor
