@@ -29,7 +29,7 @@
 
   {% if data_sql %}
     {% set sql -%}
-      insert into {{ this.render() }} ({{ cols_sql }}) VALUES
+      upsert into {{ this.render() }} ({{ cols_sql }}) VALUES
       {{ data_sql }}
     {%- endset %}
 
