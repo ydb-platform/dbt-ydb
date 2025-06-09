@@ -1,9 +1,9 @@
 [project]
 name = "dbt-ydb"
-version = "0.0.0"
+version = "0.0.0"  # AUTOVERSION
 description = "DBT adapter for YDB"
 authors = [
-    {name = "Your Name",email = "you@example.com"}
+    {name = "Yandex LLC", email = "ydb@yandex-team.ru"}
 ]
 readme = "README.md"
 requires-python = ">=3.10,<4.0"
