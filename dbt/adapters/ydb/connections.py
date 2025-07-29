@@ -27,13 +27,20 @@ class YDBCredentials(Credentials):
     profiles.yml to connect to new adapter
     """
 
-    # Add credentials members here, like:
     host: str = "localhost"
     port: int = 2136
+    database: str = "/local"
+    schema: str = ""
+    secure: bool = False
+
     username: Optional[str] = None
     password: Optional[str] = None
 
-    schema: str = ""
+    token: Optional[str] = None
+
+    service_account_credentials_file: Optional[str] = None
+
+    root_certificates_path: Optional[str] = None
 
     _ALIASES = {"dbname": "database", "pass": "password", "user": "username"}
 
@@ -62,6 +69,16 @@ class YDBCredentials(Credentials):
         if self.username is not None:
             return ydb.StaticCredentials.from_user_password(
                 self.username, self.password
+            )
+
+        if self.token is not None:
+            return ydb.AccessTokenCredentials(self.token)
+
+        if self.service_account_credentials_file is not None:
+            import ydb.iam
+
+            return ydb.iam.ServiceAccountCredentials.from_file(
+                self.service_account_credentials_file
             )
 
         return ydb.AnonymousCredentials()
@@ -108,7 +125,9 @@ class YDBConnectionManager(SQLConnectionManager):
                 host=credentials.host,
                 port=credentials.port,
                 database=credentials.database,
+                protocol="grpcs" if credentials.secure else "grpc",
                 credentials=credentials._get_ydb_credentials(),
+                root_certificates_path=credentials.root_certificates_path,
             )
             logger.debug("Connect success")
             connection.state = "open"

@@ -21,4 +21,35 @@ pip install dbt-ydb
 - [x] Seeds
 - [x] Docs generate
 - [x] Tests
+- [ ] Incremental materializations
 - [ ] TBD
+
+## Usage
+
+### Configuration
+
+To configure YDB connection, fill `profile.yml` file as below:
+
+```
+profile_name:
+  target: dev
+  outputs:
+    dev:
+      type: ydb
+      host: [localhost] # YDB host
+      port: [2136] # YDB port
+      database: [/local] # YDB database
+      schema: [<empty string>] # Optional subfolder for DBT models
+      secure: [False] # If enabled, grpcs protocol will be used
+      root_certificates_path: [<empty string>] # Optional path to root certificates file
+
+      # Static Credentials
+      username: [<empty string>]
+      password: [<empty string>]
+
+      # Access Token Credentials
+      token: [<empty string>]
+
+      # Service Account Credentials
+      service_account_credentials_file: [<empty string>]
+```
