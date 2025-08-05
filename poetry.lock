@@ -2160,14 +2160,14 @@ propcache = ">=0.2.1"
 
 [[package]]
 name = "ydb"
-version = "3.21.2"
+version = "3.21.7"
 description = "YDB Python SDK"
 optional = false
 python-versions = "*"
 groups = ["main"]
 files = [
-    {file = "ydb-3.21.2-py2.py3-none-any.whl", hash = "sha256:5b33ecf936ac61a0641785a066f06c2cd7e36d0499e742538a036d3ec694f1df"},
-    {file = "ydb-3.21.2.tar.gz", hash = "sha256:03bbd87b449a12dfdd6fe3e599be5fc41ec5180e2263135b40570b9f6beacba0"},
+    {file = "ydb-3.21.7-py2.py3-none-any.whl", hash = "sha256:bd673b30b06703223309ed079f8d01ae1462cbdcdb6441be62e322ffb89f082e"},
+    {file = "ydb-3.21.7.tar.gz", hash = "sha256:77a1ce965f3ff6094ce362ab97078246473bde29e813ec2b03b4759a41730fb4"},
 ]
 
 [package.dependencies]
@@ -2181,18 +2181,18 @@ yc = ["yandexcloud"]
 
 [[package]]
 name = "ydb-dbapi"
-version = "0.1.12"
+version = "0.1.13"
 description = "YDB Python DBAPI which complies with PEP 249"
 optional = false
 python-versions = "<4.0,>=3.8"
 groups = ["main"]
 files = [
-    {file = "ydb_dbapi-0.1.12-py3-none-any.whl", hash = "sha256:111a2e428771ec2d11d9a1b1536925a59bffaea84ba142afbc8fdd5220528813"},
-    {file = "ydb_dbapi-0.1.12.tar.gz", hash = "sha256:8aa024bb413af66727451b03142fb1974697905229814b5a9970e31dcb489f2b"},
+    {file = "ydb_dbapi-0.1.13-py3-none-any.whl", hash = "sha256:7bfa019a9175e209bf7287facfddda28b580e5427ed1c95d91dab6522da943aa"},
+    {file = "ydb_dbapi-0.1.13.tar.gz", hash = "sha256:179deff0cc6cffd1012e46dffcd0c6245cf56bf82a0f3127330e39391c3a8882"},
 ]
 
 [package.dependencies]
-ydb = ">=3.18.16,<4.0.0"
+ydb = ">=3.21.6,<4.0.0"
 
 [[package]]
 name = "zipp"
@@ -2217,4 +2217,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<4.0"
-content-hash = "cf11603774c253ce5a97be5bf8db0de3a6bfcfeec6e68cb51c9a1bfbe217e0b5"
+content-hash = "52da4df4163a217a69ec9e7d2de53e9e942af6d18a5e1b7ebf5a153b15a523d1"

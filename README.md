@@ -22,11 +22,11 @@ pip install dbt-ydb
 - [x] Docs generate
 - [x] Tests
 - [ ] Incremental materializations
-- [ ] TBD
+- [ ] Snapshots
 
 ## Usage
 
-### Configuration
+### Profile Configuration
 
 To configure YDB connection, fill `profile.yml` file as below:
 
@@ -53,3 +53,28 @@ profile_name:
       # Service Account Credentials
       service_account_credentials_file: [<empty string>]
 ```
+
+## Model Configuration
+
+### View
+
+| Option | Description | Required | Default |
+| ------ | ----------- | -------- | ------- |
+
+### Table
+
+| Option | Description | Required | Default |
+| ------ | ----------- | -------- | ------- |
+| `primary_key` | Primary key to use during table creation | `yes` | |
+| `store_type` | Type of table. Available options are `row` and `column` | `no` | `row` |
+
+### Seed
+
+| Option | Description | Required | Default |
+| ------ | ----------- | -------- | ------- |
+| `primary_key` | Primary key to use during table creation | `no` | The first column of CSV will be used as default. |
+
+
+## Limitations
+
+* `YDB` does not support CTE
