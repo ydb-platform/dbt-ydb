@@ -1,6 +1,6 @@
 from contextlib import contextmanager
 from dataclasses import dataclass
-import dbt.exceptions
+from dbt_common.exceptions import DbtDatabaseError
 from dbt.adapters.contracts.connection import AdapterResponse
 from dbt.adapters.contracts.connection import Credentials
 from dbt.adapters.contracts.connection import Connection
@@ -100,12 +100,12 @@ class YDBConnectionManager(SQLConnectionManager):
             self.release()
 
             logger.debug("YDB error: {}".format(str(exc)))
-            raise dbt.exceptions.DbtRuntimeError(str(exc))
+            raise DbtDatabaseError(str(exc))
         except Exception as exc:
             logger.debug("Error running SQL: {}".format(sql))
             logger.debug("Rolling back transaction.")
             self.release()
-            raise dbt.exceptions.DbtRuntimeError(str(exc))
+            raise DbtDatabaseError(str(exc))
 
     @classmethod
     def open(cls, connection):
@@ -134,7 +134,7 @@ class YDBConnectionManager(SQLConnectionManager):
             connection.handle = handle
         except dbapi.Error as exc:
             logger.debug("YDB error: {}".format(str(exc)))
-            raise dbt.exceptions.DatabaseException(str(exc))
+            raise DbtDatabaseError(str(exc))
 
         return connection
 

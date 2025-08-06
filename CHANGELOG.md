@@ -1,3 +1,5 @@
+* Fix error formatting
+
 ## 0.0.3 ##
 * Column tables support
 
