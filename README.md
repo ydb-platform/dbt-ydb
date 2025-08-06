@@ -59,14 +59,14 @@ profile_name:
       service_account_credentials_file: [<empty string>]
 ```
 
-## Model Configuration
+### Model Configuration
 
-### View
+#### View
 
 | Option | Description | Required | Default |
 | ------ | ----------- | -------- | ------- |
 
-### Table
+#### Table
 
 | Option | Description | Required | Default |
 | ------ | ----------- | -------- | ------- |
@@ -76,7 +76,7 @@ profile_name:
 | `auto_partitioning_partition_size_mb` | Partition size in megabytes for automatic partitioning | `no` | |
 | `ttl` | Time-to-live (TTL) expression for automatic data expiration | `no` | |
 
-#### Example table configuration
+##### Example table configuration
 
 ```sql
 {{ config(
@@ -94,7 +94,7 @@ select
 from {{ ref('source_table') }}
 ```
 
-### Seed
+#### Seed
 
 | Option | Description | Required | Default |
 | ------ | ----------- | -------- | ------- |
