@@ -1,4 +1,4 @@
-{{ config(primary_key='order_id', store_type='column') }}
+{{ config(primary_key='order_id') }}
 
 {% set payment_methods = ['credit_card', 'coupon', 'bank_transfer', 'gift_card'] %}
 

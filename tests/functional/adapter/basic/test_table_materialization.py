@@ -9,6 +9,7 @@ class TestRowTableMaterialization(BaseTableMaterialization):
       {{
         config(
           materialized = "table",
+          primary_key = "id",
           store_type = "row",
           sort = 'first_name',
           dist = 'first_name'
@@ -28,6 +29,7 @@ class TestColumnTableMaterialization(BaseTableMaterialization):
       {{
         config(
           materialized = "table",
+          primary_key = "id",
           store_type = "column",
           sort = 'first_name',
           dist = 'first_name'
