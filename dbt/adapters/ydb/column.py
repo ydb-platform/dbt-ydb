@@ -11,17 +11,13 @@ Self = TypeVar('Self', bound='YDBColumn')
 @dataclass
 class YDBColumn(Column):
     TYPE_LABELS = {
-        'STRING': 'String',
+        'STRING': 'Utf8',
         'TIMESTAMP': 'DateTime',
         'FLOAT': 'Float32',
         'INTEGER': 'Int32',
     }
     is_nullable: bool = False
-    is_low_cardinality: bool = False
-    _low_card_regex = re.compile(r'^LowCardinality\((.*)\)$')
     _nullable_regex = re.compile(r'^(.*)\?$')
-    _fix_size_regex = re.compile(r'FixedString\((.*?)\)')
-    _decimal_regex = re.compile(r'Decimal\((\d+), (\d+)\)')
 
     def __init__(self, column: str, dtype: str) -> None:
         char_size = None
@@ -29,19 +25,6 @@ class YDBColumn(Column):
         numeric_scale = None
 
         dtype = self._inner_dtype(dtype)
-
-        if dtype.lower().startswith('fixedstring'):
-            match_sized = self._fix_size_regex.search(dtype)
-            if match_sized:
-                char_size = int(match_sized.group(1))
-
-        if dtype.lower().startswith('decimal'):
-            match_dec = self._decimal_regex.search(dtype)
-            numeric_precision = 0
-            numeric_scale = 0
-            if match_dec:
-                numeric_precision = int(match_dec.group(1))
-                numeric_scale = int(match_dec.group(2))
 
         super().__init__(column, dtype, char_size, numeric_precision, numeric_scale)
 
@@ -57,8 +40,8 @@ class YDBColumn(Column):
         else:
             data_t = self.dtype
 
-        if self.is_nullable or self.is_low_cardinality:
-            data_t = self.nested_type(data_t, self.is_low_cardinality, self.is_nullable)
+        # if self.is_nullable:
+        #     data_t = self.nested_type(data_t, self.is_nullable)
 
         return data_t
 
@@ -91,30 +74,28 @@ class YDBColumn(Column):
         if not self.is_string():
             raise DbtRuntimeError('Called string_size() on non-string field!')
 
-        if not self.dtype.lower().startswith('fixedstring') or self.char_size is None:
+        if self.char_size is None:
             return 256
         else:
             return int(self.char_size)
 
     @classmethod
     def string_type(cls, size: int) -> str:
-        return 'String'
+        return 'Utf8'
 
     @classmethod
     def numeric_type(cls, dtype: str, precision: Any, scale: Any) -> str:
         return f'Decimal({precision}, {scale})'
 
     @classmethod
-    def nested_type(cls, dtype: str, is_low_cardinality: bool, is_nullable: bool) -> str:
+    def nested_type(cls, dtype: str, is_nullable: bool) -> str:
         template = "{}"
-        if is_low_cardinality:
-            template = template.format("LowCardinality({})")
         if is_nullable:
-            template = template.format("Nullable({})")
+            template = template.format("{}?")
         return template.format(dtype)
 
     def literal(self, value):
-        return f'to{self.dtype}({value})'
+        return f'{self.dtype}({value})'
 
     def can_expand_to(self, other_column: 'Column') -> bool:
         if not self.is_string() or not other_column.is_string():
@@ -124,10 +105,6 @@ class YDBColumn(Column):
 
     def _inner_dtype(self, dtype) -> str:
         inner_dtype = dtype.strip()
-
-        if low_card_match := self._low_card_regex.search(inner_dtype):
-            self.is_low_cardinality = True
-            inner_dtype = low_card_match.group(1)
 
         if null_match := self._nullable_regex.search(inner_dtype):
             self.is_nullable = True

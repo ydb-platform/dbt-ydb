@@ -196,3 +196,8 @@ class YDBConnectionManager(SQLConnectionManager):
                 f"SQL status: {status} in {(time.time() - pre):0.2f} seconds"
             )
             return conn, cursor
+
+    @classmethod
+    def data_type_code_to_name(cls, type_code: int | str) -> str:
+        assert isinstance(type_code, int)
+        return ''
