@@ -297,6 +297,16 @@ class YDBAdapter(SQLAdapter):
             columns.append(column)
         return columns
 
+    @available.parse_none
+    def get_column_schema_from_query(self, sql: str, *_) -> List[YDBColumn]:
+        logger.info(f"Try to get column schema from query: \n{sql}")
+        connection = self.connections.get_thread_connection()
+        dbapi_connection = connection.handle
+
+        with dbapi_connection.cursor() as cur:
+            cur.execute(sql)
+            return [YDBColumn(col[0], col[1]) for col in cur.description]
+
 
 
 COLUMNS_EQUAL_SQL = '''
