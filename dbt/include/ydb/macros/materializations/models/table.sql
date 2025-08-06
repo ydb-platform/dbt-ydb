@@ -1,6 +1,7 @@
 {% macro ydb__create_table_as(temporary, relation, sql) -%}
   {%- set sql_header = config.get('sql_header', none) -%}
   {%- set primary_key_column = model['config'].get('primary_key', 'id') -%}
+  {%- set store_type = model['config'].get('store_type', 'row') -%}
 
   {{ sql_header if sql_header is not none }}
 
@@ -13,6 +14,9 @@
     {{ get_table_columns_and_constraints() }}
     {%- set sql = get_select_subquery(sql) %}
   {% endif %}
+  WITH (
+    STORE = {{ store_type }}
+  )
   as (
   {{ sql }}
   )

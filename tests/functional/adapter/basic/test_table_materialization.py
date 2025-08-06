@@ -2,21 +2,39 @@ import pytest
 
 from dbt.tests.adapter.basic.test_table_materialization import BaseTableMaterialization
 
-# We have to override this because of seed table render
-model_sql = """
-{{
-  config(
-    materialized = "table",
-    sort = 'first_name',
-    dist = 'first_name'
-  )
-}}
-
-select * from `{{ this.schema }}/seed`
-"""
-
-
-class TestTableMaterialization(BaseTableMaterialization):
+class TestRowTableMaterialization(BaseTableMaterialization):
     @pytest.fixture(scope="class")
     def models(self):
-        return {"materialized.sql": model_sql}
+      model_sql = """
+      {{
+        config(
+          materialized = "table",
+          store_type = "row",
+          sort = 'first_name',
+          dist = 'first_name'
+        )
+      }}
+
+      select * from `{{ this.schema }}/seed`
+      """
+
+      return {"materialized.sql": model_sql}
+
+
+class TestColumnTableMaterialization(BaseTableMaterialization):
+    @pytest.fixture(scope="class")
+    def models(self):
+      model_sql = """
+      {{
+        config(
+          materialized = "table",
+          store_type = "column",
+          sort = 'first_name',
+          dist = 'first_name'
+        )
+      }}
+
+      select * from `{{ this.schema }}/seed`
+      """
+
+      return {"materialized.sql": model_sql}

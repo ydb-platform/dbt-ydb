@@ -9,3 +9,4 @@ services:
     environment:
       - YDB_USE_IN_MEMORY_PDISKS=true
       - YDB_ENABLE_COLUMN_TABLES=true
+      - YDB_FEATURE_FLAGS=enable_move_column_table
