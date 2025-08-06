@@ -1,3 +1,4 @@
+## 0.0.3 ##
 * Column tables support
 
 ## 0.0.2 ##
