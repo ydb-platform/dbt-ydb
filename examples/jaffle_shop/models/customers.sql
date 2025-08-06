@@ -1,4 +1,3 @@
-
 {{ config(primary_key='customer_id') }}
 
 select

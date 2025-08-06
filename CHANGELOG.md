@@ -1,3 +1,4 @@
+* Additional configuration params to table materializations
 * Fix error formatting
 
 ## 0.0.3 ##

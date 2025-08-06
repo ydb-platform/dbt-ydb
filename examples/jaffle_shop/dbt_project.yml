@@ -26,6 +26,7 @@ seeds:
 models:
   jaffle_shop:
     +materialized: table
+    # +store_type: column
     staging:
       +materialized: view
       +docs:

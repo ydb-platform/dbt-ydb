@@ -24,6 +24,11 @@ pip install dbt-ydb
 - [ ] Incremental materializations
 - [ ] Snapshots
 
+## Limitations
+
+* `YDB` does not support CTE
+* `YDB` requires a primary key to be specified for its tables. See the configuration section for instructions on how to set it.
+
 ## Usage
 
 ### Profile Configuration
@@ -65,16 +70,32 @@ profile_name:
 
 | Option | Description | Required | Default |
 | ------ | ----------- | -------- | ------- |
-| `primary_key` | Primary key to use during table creation | `yes` | |
+| `primary_key` | Primary key expression to use during table creation | `yes` | |
 | `store_type` | Type of table. Available options are `row` and `column` | `no` | `row` |
+| `auto_partitioning_by_size` | Enable automatic partitioning by size. Available options are `ENABLED` and `DISABLED` | `no` | |
+| `auto_partitioning_partition_size_mb` | Partition size in megabytes for automatic partitioning | `no` | |
+| `ttl` | Time-to-live (TTL) expression for automatic data expiration | `no` | |
+
+#### Example table configuration
+
+```sql
+{{ config(
+    primary_key='id, created_at',
+    store_type='column',
+    auto_partitioning_by_size='ENABLED',
+    auto_partitioning_partition_size_mb=256,
+    ttl='Interval("P30D") on created_at'
+) }}
+
+select
+    id,
+    name,
+    created_at
+from {{ ref('source_table') }}
+```
 
 ### Seed
 
 | Option | Description | Required | Default |
 | ------ | ----------- | -------- | ------- |
-| `primary_key` | Primary key to use during table creation | `no` | The first column of CSV will be used as default. |
-
-
-## Limitations
-
-* `YDB` does not support CTE
+| `primary_key` | Primary key expression to use during table creation | `no` | The first column of CSV will be used as default. |

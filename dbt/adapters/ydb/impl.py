@@ -2,13 +2,13 @@ from dbt.adapters.sql import SQLAdapter
 from dbt.adapters.base.relation import BaseRelation
 from dbt.adapters.base.impl import ConstraintSupport, ConstraintType
 from dbt.adapters.cache import _make_ref_key_dict
-from dbt.adapters.events.types import ColTypeChange, SchemaCreation, SchemaDrop
+from dbt.adapters.events.types import SchemaCreation, SchemaDrop
 import dbt_common.clients
 from dbt_common.exceptions import DbtRuntimeError, CompilationError
 from dbt_common.events.functions import fire_event
 from dbt.adapters.base.relation import InformationSchema
 
-from dbt.adapters.base.meta import AdapterMeta, available
+from dbt.adapters.base.meta import available
 from dbt.adapters.events.logging import AdapterLogger
 from dbt_common.clients.agate_helper import DEFAULT_TYPE_TESTER
 # from dbt.adapters.base.column import Column
@@ -17,9 +17,8 @@ from dbt.adapters.ydb import YDBConnectionManager
 from dbt.adapters.ydb.column import YDBColumn
 from dbt.adapters.ydb.relation import YDBRelation
 
-from typing import Any, Dict, FrozenSet, Iterable, List, TYPE_CHECKING, Optional, Set, Tuple
+from typing import Any, Dict, FrozenSet, List, TYPE_CHECKING, Optional, Set, Tuple
 
-import traceback
 
 if TYPE_CHECKING:
     import agate
