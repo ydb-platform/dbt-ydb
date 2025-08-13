@@ -1,3 +1,5 @@
+* Lower details log level to debug
+
 ## 0.0.4 ##
 * Additional configuration params to table materializations
 * Fix error formatting

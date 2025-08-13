@@ -77,7 +77,7 @@ class YDBAdapter(SQLAdapter):
         schema_relation: BaseRelation,
     ) -> List[BaseRelation]:
         if not self.check_schema_exists(schema_relation.database, schema_relation.schema):
-            logger.info(f"Unable to list relations in schema {schema_relation.schema}: schema does not exist")
+            logger.debug(f"Unable to list relations in schema {schema_relation.schema}: schema does not exist")
             return []
 
         connection = self.connections.get_thread_connection()
@@ -110,12 +110,12 @@ class YDBAdapter(SQLAdapter):
         connection = self.connections.get_thread_connection()
         dbapi_connection = connection.handle
 
-        logger.info(f"Try to get columns from  {relation}")
+        logger.debug(f"Try to get columns from  {relation}")
 
         rel_str = relation.render().replace('`', '')
 
         if not dbapi_connection.check_exists(rel_str):
-            logger.info(f"Relation {rel_str} does not exist, unable to get columns")
+            logger.debug(f"Relation {rel_str} does not exist, unable to get columns")
             return []
 
         with dbapi_connection.cursor() as cur:
@@ -177,17 +177,14 @@ class YDBAdapter(SQLAdapter):
         dbapi_connection._driver.scheme_client.make_directory(directory)
 
     def drop_schema(self, relation):
-        logger.info("DROP SCHEMA")
-        # traceback.print_stack()
-
         if not self.check_schema_exists(relation.database, relation.schema):
-            logger.info("Unable to drop schema: does not exist")
+            logger.debug("Unable to drop schema: does not exist")
             return
         relation = relation.without_identifier()
         fire_event(SchemaDrop(relation=_make_ref_key_dict(relation)))
 
         for inner_relation in self.list_relations_without_caching(relation):
-            logger.info(f"Drop child relation before drop schema: {inner_relation}")
+            logger.debug(f"Drop child relation before drop schema: {inner_relation}")
             self.drop_relation(inner_relation)
 
         connection = self.connections.get_thread_connection()
@@ -201,8 +198,6 @@ class YDBAdapter(SQLAdapter):
 
         # we can update the cache here
         self.cache.drop_schema(relation.database, relation.schema)
-
-        logger.debug("DROP SCHEMA SUCCESS")
 
     @available
     def prepare_insert_values_from_csv(self, table):
