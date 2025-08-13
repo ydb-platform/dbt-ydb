@@ -189,10 +189,10 @@ class YDBConnectionManager(SQLConnectionManager):
             logger.debug(f"On {conn.name}: {sql}...")
             pre = time.time()
             cursor = dbapi_connection.cursor()
-            logger.info(f"Try to execute SQL: \n{sql}")
+            logger.debug(f"Try to execute SQL: \n{sql}")
             cursor.execute_scheme(sql) # TODO: split
             status = self.get_response(cursor)
-            logger.info(
+            logger.debug(
                 f"SQL status: {status} in {(time.time() - pre):0.2f} seconds"
             )
             return conn, cursor
