@@ -186,6 +186,6 @@ Example 3 of 3 of required macros that does not have a default implementation.
 */
 
 {% macro ydb__current_timestamp() -%}
-'''Returns current UTC time'''
+CurrentUtcTimestamp()
 {# docs show not to be implemented currently. #}
 {% endmacro %}

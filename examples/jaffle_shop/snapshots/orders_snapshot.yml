@@ -1,0 +1,7 @@
+snapshots:
+  - name: orders_snapshot
+    relation: source('jaffle_shop', 'orders')
+    config:
+      strategy: timestamp
+      unique_key: order_id
+      updated_at: order_date
