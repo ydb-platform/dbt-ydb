@@ -1,3 +1,4 @@
+## 0.0.6 ##
 * Incremental materializations support
 
 ## 0.0.5 ##
