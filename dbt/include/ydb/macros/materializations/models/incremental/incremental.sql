@@ -44,7 +44,8 @@
       {% set relation_for_indexes = intermediate_relation %}
       {% set need_swap = true %}
   {% else %}
-    {% do run_query(get_create_table_as_sql(True, temp_relation, sql)) %}
+    {% do run_query(get_create_table_as_sql(False, temp_relation, sql)) %}
+    {% do to_drop.append(temp_relation) %}
     {% set relation_for_indexes = temp_relation %}
     {% set contract_config = config.get('contract') %}
     {% if not contract_config or not contract_config.enforced %}
@@ -105,3 +106,43 @@
   {{ return({'relations': [target_relation]}) }}
 
 {%- endmaterialization %}
+
+{% macro ydb__get_merge_sql(target, source, unique_key, dest_columns, incremental_predicates=none) -%}
+    {%- set predicates = [] if incremental_predicates is none else [] + incremental_predicates -%}
+    {%- set dest_cols_csv = get_quoted_csv(dest_columns | map(attribute="name")) -%}
+    {%- set merge_update_columns = config.get('merge_update_columns') -%}
+    {%- set merge_exclude_columns = config.get('merge_exclude_columns') -%}
+    {%- set update_columns = get_merge_update_columns(merge_update_columns, merge_exclude_columns, dest_columns) -%}
+    {%- set sql_header = config.get('sql_header', none) -%}
+
+    {% if unique_key %}
+        {% if unique_key is sequence and unique_key is not mapping and unique_key is not string %}
+            {% for key in unique_key %}
+                {% set this_key_match %}
+                    DBT_INTERNAL_SOURCE.{{ key }} = DBT_INTERNAL_DEST.{{ key }}
+                {% endset %}
+                {% do predicates.append(this_key_match) %}
+            {% endfor %}
+        {% else %}
+            {% set source_unique_key = ("DBT_INTERNAL_SOURCE." ~ unique_key) | trim %}
+	    {% set target_unique_key = ("DBT_INTERNAL_DEST." ~ unique_key) | trim %}
+	    {% set unique_key_match = equals(source_unique_key, target_unique_key) | trim %}
+            {% do predicates.append(unique_key_match) %}
+        {% endif %}
+    {% else %}
+        {% do predicates.append('FALSE') %}
+    {% endif %}
+
+    {{ sql_header if sql_header is not none }}
+
+    upsert into {{ target }}
+    select {{ dest_cols_csv }} from {{ source }}
+
+{% endmacro %}
+
+
+{% macro ydb__get_incremental_default_sql(arg_dict) %}
+
+  {% do return(get_incremental_merge_sql(arg_dict)) %}
+
+{% endmacro %}

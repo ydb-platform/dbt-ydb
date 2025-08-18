@@ -11,16 +11,13 @@ Self = TypeVar('Self', bound='YDBColumn')
 @dataclass
 class YDBColumn(Column):
     TYPE_LABELS = {
-        'STRING': 'String',
+        'STRING': 'Text',
         'TIMESTAMP': 'DateTime',
-        'FLOAT': 'Float32',
-        'INTEGER': 'Int32',
+        'FLOAT': 'Float',
+        'INTEGER': 'Int64',
     }
     is_nullable: bool = False
-    is_low_cardinality: bool = False
-    _low_card_regex = re.compile(r'^LowCardinality\((.*)\)$')
     _nullable_regex = re.compile(r'^(.*)\?$')
-    _fix_size_regex = re.compile(r'FixedString\((.*?)\)')
     _decimal_regex = re.compile(r'Decimal\((\d+), (\d+)\)')
 
     def __init__(self, column: str, dtype: str) -> None:
@@ -29,11 +26,6 @@ class YDBColumn(Column):
         numeric_scale = None
 
         dtype = self._inner_dtype(dtype)
-
-        if dtype.lower().startswith('fixedstring'):
-            match_sized = self._fix_size_regex.search(dtype)
-            if match_sized:
-                char_size = int(match_sized.group(1))
 
         if dtype.lower().startswith('decimal'):
             match_dec = self._decimal_regex.search(dtype)
@@ -57,26 +49,16 @@ class YDBColumn(Column):
         else:
             data_t = self.dtype
 
-        if self.is_nullable or self.is_low_cardinality:
-            data_t = self.nested_type(data_t, self.is_low_cardinality, self.is_nullable)
+        if self.is_nullable:
+            data_t = self.nested_type(data_t, self.is_nullable)
 
         return data_t
 
     def is_string(self) -> bool:
         return self.dtype.lower() in [
-            'string',
-            'fixedstring',
-            'longblob',
-            'longtext',
-            'tinytext',
             'text',
-            'varchar',
-            'mediumblob',
-            'blob',
-            'tinyblob',
-            'char',
-            'mediumtext',
-        ] or self.dtype.lower().startswith('fixedstring')
+            'utf8',
+        ]
 
     def is_integer(self) -> bool:
         return self.dtype.lower().startswith('int') or self.dtype.lower().startswith('uint')
@@ -98,17 +80,15 @@ class YDBColumn(Column):
 
     @classmethod
     def string_type(cls, size: int) -> str:
-        return 'String'
+        return 'Text'
 
     @classmethod
     def numeric_type(cls, dtype: str, precision: Any, scale: Any) -> str:
         return f'Decimal({precision}, {scale})'
 
     @classmethod
-    def nested_type(cls, dtype: str, is_low_cardinality: bool, is_nullable: bool) -> str:
+    def nested_type(cls, dtype: str, is_nullable: bool) -> str:
         template = "{}"
-        if is_low_cardinality:
-            template = template.format("LowCardinality({})")
         if is_nullable:
             template = template.format("Nullable({})")
         return template.format(dtype)
@@ -124,10 +104,6 @@ class YDBColumn(Column):
 
     def _inner_dtype(self, dtype) -> str:
         inner_dtype = dtype.strip()
-
-        if low_card_match := self._low_card_regex.search(inner_dtype):
-            self.is_low_cardinality = True
-            inner_dtype = low_card_match.group(1)
 
         if null_match := self._nullable_regex.search(inner_dtype):
             self.is_nullable = True

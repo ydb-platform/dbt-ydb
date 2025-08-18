@@ -76,6 +76,17 @@ profile_name:
 | `auto_partitioning_partition_size_mb` | Partition size in megabytes for automatic partitioning | `no` | |
 | `ttl` | Time-to-live (TTL) expression for automatic data expiration | `no` | |
 
+#### Incremental
+
+| Option | Description | Required | Default |
+| ------ | ----------- | -------- | ------- |
+| `incremental_strategy` | Strategy of incremental materialization. Current adapter supports only `merge` strategy, which will use `YDB`'s `UPSERT` operation. | `no` | `default` |
+| `primary_key` | Primary key expression to use during table creation | `yes` | |
+| `store_type` | Type of table. Available options are `row` and `column` | `no` | `row` |
+| `auto_partitioning_by_size` | Enable automatic partitioning by size. Available options are `ENABLED` and `DISABLED` | `no` | |
+| `auto_partitioning_partition_size_mb` | Partition size in megabytes for automatic partitioning | `no` | |
+| `ttl` | Time-to-live (TTL) expression for automatic data expiration | `no` | |
+
 ##### Example table configuration
 
 ```sql
