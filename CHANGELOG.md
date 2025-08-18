@@ -1,3 +1,5 @@
+* Incremental materializations support
+
 ## 0.0.5 ##
 * Lower details log level to debug
 
