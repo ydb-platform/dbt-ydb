@@ -18,7 +18,6 @@ select
 
 from {{ ref('stg_orders') }} as orders
 
-
 left join (
     select
         order_id,

@@ -119,7 +119,7 @@ class YDBAdapter(SQLAdapter):
             return []
 
         with dbapi_connection.cursor() as cur:
-            cur.execute(f"SELECT * FROM {relation} LIMIT 0")
+            cur.execute(f"SELECT * FROM {relation} LIMIT 1")
             return [YDBColumn(col[0], col[1]) for col in cur.description]
 
     def get_rows_different_sql(
@@ -291,6 +291,22 @@ class YDBAdapter(SQLAdapter):
             }
             columns.append(column)
         return columns
+
+    def valid_incremental_strategies(self):
+        """The set of standard builtin strategies which this adapter supports out-of-the-box.
+        Not used to validate custom strategies defined by end users.
+        """
+        return ["merge"]
+
+    @available.parse_none
+    def get_column_schema_from_query(self, sql: str, *_) -> List[YDBColumn]:
+        logger.info(f"Try to get column schema from query: \n{sql}")
+        connection = self.connections.get_thread_connection()
+        dbapi_connection = connection.handle
+
+        with dbapi_connection.cursor() as cur:
+            cur.execute(sql)
+            return [YDBColumn(col[0], col[1]) for col in cur.description]
 
 
 
