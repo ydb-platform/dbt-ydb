@@ -2,17 +2,38 @@ fixed:
   type: ydb
 prompts:
   host:
-    hint: "your host name"
+    hint: "YDB host. Example: localhost"
   port:
-    default: 5432
     type: "int"
-  user:
-    hint: "dev username"
-  password:
-    hint: "dev password"
-    hide_input: true
-  dbname:
-    hint: "default database"
+    hint: "YDB port. Example: 2136"
+  database:
+    hint: "YDB database. Example: /local"
+  schema:
+    hint: "YDB schema. Optional."
+    default: ""
+  secure:
+    hint: "Use grpcs protocol. Default: false"
+    type: "bool"
+    default: false
+  root_certificates_path:
+    hint: "Path to root certificates. Optional."
+    default: ""
+
+  _choose_authentication_method:
+    static_credentials:
+      username:
+        hint: "username"
+      password:
+        hint: "password"
+        hide_input: true
+    access_token:
+      token:
+        hint: "Access token"
+        hide_input: true
+    service_account:
+      service_account_credentials_file:
+        hint: "Path to service account credentials file"
+
   threads:
     hint: "1 or more"
     type: "int"
