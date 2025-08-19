@@ -1,3 +1,5 @@
+* Update profile_template for dbt init
+
 ## 0.0.6 ##
 * Incremental materializations support
 
