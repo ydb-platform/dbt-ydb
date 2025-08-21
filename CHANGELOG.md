@@ -1,3 +1,4 @@
+## 0.0.8 ##
 * Snapshot support
 * Fix source usage in root folder
 
