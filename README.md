@@ -4,7 +4,7 @@
 
 # dbt-ydb
 
-**dbt-ydb** is a plugin for [dbt](https://www.getdbt.com/) that provides support for working with [YDB](https://ydb.tech).
+**dbt-ydb** is a plugin for [dbt](https://www.getdbt.com/) that provides support for working with [YDB](https://ydb.tech). **dbt-ydb** adapter is in preview stage and does not currently support all dbt features. The sections below list the supported features and known limitations.
 
 ## Installation
 
@@ -21,13 +21,14 @@ pip install dbt-ydb
 - [x] Seeds
 - [x] Docs generate
 - [x] Tests
-- [ ] Incremental materializations
-- [ ] Snapshots
+- [x] Incremental materializations (`merge` strategy only)
+- [x] Snapshots
 
 ## Limitations
 
 * `YDB` does not support CTE
 * `YDB` requires a primary key to be specified for its tables. See the configuration section for instructions on how to set it.
+* `source()` macro requires you to specify a `schema`. Use `/` if your source is in root folder.
 
 ## Usage
 
