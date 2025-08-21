@@ -23,4 +23,4 @@ class YDBRelation(BaseRelation):
 
     def render(self) -> str:
         # if there is nothing set, this will return the empty string.
-        return self.quoted("/".join([part for part in [self.schema, self.identifier] if part]))
+        return self.quoted("/".join([part for part in [self.schema, self.identifier] if part and part != "/"]))
