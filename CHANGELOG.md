@@ -1,3 +1,6 @@
+* Snapshot support
+* Fix source usage in root folder
+
 ## 0.0.7 ##
 * Update profile_template for dbt init
 
