@@ -1,0 +1,7 @@
+snapshots:
+  - name: orders_snapshot
+    relation: ref('orders')
+    config:
+      strategy: check
+      check_cols: all
+      unique_key: order_id

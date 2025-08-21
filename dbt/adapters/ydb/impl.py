@@ -300,13 +300,46 @@ class YDBAdapter(SQLAdapter):
 
     @available.parse_none
     def get_column_schema_from_query(self, sql: str, *_) -> List[YDBColumn]:
-        logger.info(f"Try to get column schema from query: \n{sql}")
+        logger.debug(f"Try to get column schema from query: \n{sql}")
         connection = self.connections.get_thread_connection()
         dbapi_connection = connection.handle
 
         with dbapi_connection.cursor() as cur:
             cur.execute(sql)
             return [YDBColumn(col[0], col[1]) for col in cur.description]
+
+    def timestamp_add_sql(self, add_to: str, number: int = 1, interval: str = "hour") -> str:
+        match interval:
+            case "day":
+                return f"{add_to} + DateTime::IntervalFromDays({number})"
+            case "hour":
+                return f"{add_to} + DateTime::IntervalFromHours({number})"
+            case "minute":
+                return f"{add_to} + DateTime::IntervalFromMinutes({number})"
+            case "second":
+                return f"{add_to} + DateTime::IntervalFromSeconds({number})"
+            case "millisecond":
+                return f"{add_to} + DateTime::IntervalFromMilliseconds({number})"
+            case "microsecond":
+                return f"{add_to} + DateTime::IntervalFromMicroseconds({number})"
+            case _:
+                raise DbtRuntimeError(
+                    f"Unsupported value for interval: {interval}, only day, hour,"
+                    "minute, second, millisecond, microsecond are supported"
+                )
+
+    def string_add_sql(
+        self,
+        add_to: str,
+        value: str,
+        location="append",
+    ) -> str:
+        if location == "append":
+            return f"{add_to} || Text('{value}')"
+        elif location == "prepend":
+            return f"Text('{value}') || {add_to}"
+        else:
+            raise DbtRuntimeError(f'Got an unexpected location value of "{location}"')
 
 
 

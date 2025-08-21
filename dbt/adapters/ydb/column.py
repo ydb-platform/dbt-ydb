@@ -89,8 +89,8 @@ class YDBColumn(Column):
     @classmethod
     def nested_type(cls, dtype: str, is_nullable: bool) -> str:
         template = "{}"
-        if is_nullable:
-            template = template.format("Nullable({})")
+        if not is_nullable:
+            template = template.format("{} NOT NULL")
         return template.format(dtype)
 
     def literal(self, value):

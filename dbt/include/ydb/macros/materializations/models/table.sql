@@ -35,7 +35,7 @@
     , TTL = {{ ttl_expr }}
     {%- endif -%}
   )
-  as (
+  as
   {{ sql }}
-  )
+
 {%- endmacro %}
