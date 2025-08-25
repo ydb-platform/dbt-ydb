@@ -93,7 +93,7 @@ profile_name:
 ```sql
 {{ config(
     primary_key='id, created_at',
-    store_type='column',
+    store_type='row',
     auto_partitioning_by_size='ENABLED',
     auto_partitioning_partition_size_mb=256,
     ttl='Interval("P30D") on created_at'
