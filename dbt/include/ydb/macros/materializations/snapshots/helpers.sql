@@ -41,9 +41,9 @@
 
   {% set columns = config.get('snapshot_table_column_names') or get_snapshot_table_column_names() %}
 
-  {%- set primary_key_expr = columns.dbt_scd_id -%}
+  {%- set primary_key_expr = config.get('primary_key', columns.dbt_scd_id) -%}
 
-  {%- set store_type = 'row' -%}
+  {%- set store_type = config.get('store_type', 'row') -%}
 
   {%- set auto_partitioning_by_size = model['config'].get('auto_partitioning_by_size') -%}
   {%- set auto_partitioning_partition_size_mb = model['config'].get('auto_partitioning_partition_size_mb') -%}
