@@ -5,3 +5,4 @@ snapshots:
       strategy: check
       check_cols: all
       unique_key: order_id
+      store_type: column
