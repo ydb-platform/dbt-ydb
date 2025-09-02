@@ -1,3 +1,4 @@
+## 0.0.9 ##
 * Ability to configure snapshot table scheme
 
 ## 0.0.8 ##
