@@ -1,3 +1,5 @@
+* Ability to configure snapshot table scheme
+
 ## 0.0.8 ##
 * Snapshot support
 * Fix source usage in root folder
