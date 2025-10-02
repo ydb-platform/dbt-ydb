@@ -1,3 +1,4 @@
+## 0.0.10 ##
 * Fix add column query
 
 ## 0.0.9 ##
