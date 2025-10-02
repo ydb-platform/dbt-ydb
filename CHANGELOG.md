@@ -1,3 +1,5 @@
+* Fix add column query
+
 ## 0.0.9 ##
 * Ability to configure snapshot table scheme
 
