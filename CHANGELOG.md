@@ -1,3 +1,4 @@
+## 0.0.11 ##
 * Ability to manually disable quoting
 
 ## 0.0.10 ##
