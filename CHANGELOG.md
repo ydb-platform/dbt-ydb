@@ -1,3 +1,5 @@
+* Ability to manually disable quoting
+
 ## 0.0.10 ##
 * Fix add column query
 
