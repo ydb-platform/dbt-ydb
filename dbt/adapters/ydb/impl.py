@@ -257,9 +257,7 @@ class YDBAdapter(SQLAdapter):
         used_schemas: FrozenSet[Tuple[str, str]],
     ) -> "agate.Table":
         if len(schemas) != 1:
-            raise CompilationError(
-                f"Expected only one schema in ydb _get_one_catalog, found " f"{schemas}"
-            )
+            logger.debug(f"Expected only one schema in ydb _get_one_catalog, found {schemas}. Will use {list(schemas)[0]}")
 
         database = information_schema.database
         schema = list(schemas)[0]
