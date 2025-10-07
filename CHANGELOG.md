@@ -1,3 +1,5 @@
+* Ability to use nested schemas
+
 ## 0.0.11 ##
 * Ability to manually disable quoting
 
