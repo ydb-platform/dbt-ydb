@@ -1,3 +1,4 @@
+## 0.0.12 ##
 * Ability to use nested schemas
 
 ## 0.0.11 ##

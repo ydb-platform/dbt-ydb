@@ -1,6 +1,6 @@
 [project]
 name = "dbt-ydb"
-version = "0.0.11"  # AUTOVERSION
+version = "0.0.12"  # AUTOVERSION
 description = "DBT adapter for YDB"
 authors = [
     {name = "Yandex LLC", email = "ydb@yandex-team.ru"}
