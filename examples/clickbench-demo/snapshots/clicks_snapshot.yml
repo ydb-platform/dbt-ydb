@@ -1,0 +1,8 @@
+snapshots:
+  - name: clicks_snapshot
+    relation: ref('int_clicks_parsed')
+    config:
+      strategy: timestamp
+      unique_key: [event_id, event_time, event_date, counter_id, user_id]
+      updated_at: last_modified_at
+      store_type: column

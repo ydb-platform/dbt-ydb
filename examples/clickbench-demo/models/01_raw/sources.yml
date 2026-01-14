@@ -1,0 +1,507 @@
+version: 2
+
+sources:
+  - name: external
+    schema: clickbench
+    description: "Raw clickstream data ingested from web tracking system"
+    loader: "YDB CDC pipeline"
+
+    tables:
+      - name: hits
+        description: "Raw logs of user interactions (clicks, pageviews, events). One row per hit. Sourced via CDC from YDB."
+        quoting:
+          identifier: true  # Ensures case-sensitive identifier quoting for YDB
+
+        meta:
+          owner: data-engineering
+          source_system: web-tracking
+          sensitivity: pii_partial
+          # YDB-specific physical design hints (for documentation and future automation)
+          ydb:
+            primary_key:
+              - WatchID
+              - EventTime
+              - EventDate
+              - CounterID
+              - UserID
+            partition_key:
+              - WatchID
+              - EventTime
+              - EventDate
+              - CounterID
+              - UserID
+            storage_policy: ssd
+            read_replicas: 2
+
+        columns:
+
+          - name: last_modified_at
+            description: "Timestamp when row was updated last time by ETL"
+            data_type: Timestamp
+            tests:
+              - not_null
+
+          # ===================================================================
+          # ID COLUMNS
+          # ===================================================================
+          - name: WatchID
+            description: "Unique event ID"
+            data_type: int64
+            tests:
+              - not_null
+
+          - name: UserID
+            description: "User identifier (may be anonymous)"
+            data_type: int64
+            tests:
+              - not_null
+
+          - name: CounterID
+            description: "Counter (site) ID"
+            data_type: int32
+            tests:
+              - not_null
+
+          - name: FUniqID
+            description: "Fingerprint-based unique user ID"
+            data_type: int64
+            tests:
+              - not_null
+
+          # ===================================================================
+          # TIME COLUMNS
+          # ===================================================================
+          - name: EventTime
+            description: "Event timestamp (UTC)"
+            data_type: timestamp
+            tests:
+              - not_null
+
+          - name: EventDate
+            description: "Event date (for partitioning)"
+            data_type: date
+            tests:
+              - not_null
+
+          - name: ClientEventTime
+            description: "Client-side event timestamp"
+            data_type: timestamp
+
+          - name: LocalEventTime
+            description: "Local event timestamp (with timezone)"
+            data_type: timestamp
+
+          # ===================================================================
+          # TRAFFIC & MARKETING
+          # ===================================================================
+          - name: UTMSource
+            description: "UTM: traffic source (e.g. google, yandex)"
+            data_type: utf8
+
+          - name: UTMMedium
+            description: "UTM: medium (e.g. cpc, banner)"
+            data_type: utf8
+
+          - name: UTMCampaign
+            description: "UTM: campaign name"
+            data_type: utf8
+
+          - name: UTMContent
+            description: "UTM: ad content or A/B test"
+            data_type: utf8
+
+          - name: UTMTerm
+            description: "UTM: search term"
+            data_type: utf8
+
+          - name: TraficSourceID
+            description: "Traffic source code (1=organic, 2=direct, etc.)"
+            data_type: int16
+
+          - name: SearchEngineID
+            description: "Search engine ID (1=Yandex, 2=Google)"
+            data_type: int16
+
+          - name: SearchPhrase
+            description: "Search query that led to the page"
+            data_type: utf8
+
+          - name: AdvEngineID
+            description: "Advertising system ID (1=Yandex.Direct)"
+            data_type: int16
+
+          - name: HasGCLID
+            description: "Flag: Google Click ID present"
+            data_type: int16
+
+          - name: Referer
+            description: "Referrer URL"
+            data_type: utf8
+
+          - name: OpenstatServiceName
+            description: "OpenStat: service name"
+            data_type: utf8
+
+          - name: OpenstatCampaignID
+            description: "OpenStat: campaign ID"
+            data_type: utf8
+
+          - name: OpenstatAdID
+            description: "OpenStat: ad ID"
+            data_type: utf8
+
+          - name: OpenstatSourceID
+            description: "OpenStat: source ID"
+            data_type: utf8
+
+          # ===================================================================
+          # USER & DEVICE
+          # ===================================================================
+          - name: UserAgent
+            description: "User-Agent ID (not string!)"
+            data_type: int16
+
+          - name: UserAgentMajor
+            description: "User-Agent major version"
+            data_type: int16
+
+          - name: UserAgentMinor
+            description: "User-Agent minor version"
+            data_type: string  # Note: in YDB this is String, not Utf8
+
+          - name: OS
+            description: "Operating system ID"
+            data_type: int16
+
+          - name: IsMobile
+            description: "Flag: mobile device (0=no, 1=yes)"
+            data_type: int16
+            tests:
+              - accepted_values:
+                  values: [0, 1]
+                  quote: false
+
+          - name: MobilePhone
+            description: "Mobile phone ID"
+            data_type: int16
+
+          - name: MobilePhoneModel
+            description: "Mobile phone model"
+            data_type: utf8
+
+          - name: ResolutionWidth
+            description: "Screen width (px)"
+            data_type: int16
+
+          - name: ResolutionHeight
+            description: "Screen height (px)"
+            data_type: int16
+
+          - name: ResolutionDepth
+            description: "Color depth"
+            data_type: int16
+
+          - name: WindowClientWidth
+            description: "Browser window width (px)"
+            data_type: int16
+
+          - name: WindowClientHeight
+            description: "Browser window height (px)"
+            data_type: int16
+
+          - name: ClientIP
+            description: "Client IP address (as int)"
+            data_type: int32
+
+          - name: RegionID
+            description: "User region (country, city)"
+            data_type: int32
+
+          - name: ClientTimeZone
+            description: "Client time zone offset (minutes)"
+            data_type: int16
+
+          - name: BrowserLanguage
+            description: "Browser language"
+            data_type: utf8
+
+          - name: BrowserCountry
+            description: "Browser country"
+            data_type: utf8
+
+          # ===================================================================
+          # PAGE & BEHAVIOR
+          # ===================================================================
+          - name: URL
+            description: "Current page URL"
+            data_type: utf8
+
+          - name: Title
+            description: "Page title"
+            data_type: utf8
+
+          - name: IsLink
+            description: "Flag: click on a link"
+            data_type: int16
+            tests:
+              - accepted_values:
+                  values: [0, 1]
+                  quote: false
+
+          - name: IsDownload
+            description: "Flag: file download"
+            data_type: int16
+            tests:
+              - accepted_values:
+                  values: [0, 1]
+                  quote: false
+
+          - name: IsNotBounce
+            description: "Flag: not a bounce (user interacted)"
+            data_type: int16
+            tests:
+              - accepted_values:
+                  values: [0, 1]
+                  quote: false
+
+          - name: GoodEvent
+            description: "Flag: high-quality interaction"
+            data_type: int16
+            tests:
+              - accepted_values:
+                  values: [0, 1]
+                  quote: false
+
+          # ===================================================================
+          # USER PROFILE
+          # ===================================================================
+          - name: Age
+            description: "User age"
+            data_type: int16
+
+          - name: Sex
+            description: "User sex (1=male, 2=female, 0=not provided)"
+            data_type: int16
+            tests:
+              - accepted_values:
+                  values: [0, 1, 2]
+                  quote: false
+
+          - name: Income
+            description: "User income level (0=unknown)"
+            data_type: int16
+
+          - name: Interests
+            description: "User interests (bitmask or ID)"
+            data_type: int16
+
+          - name: Robotness
+            description: "Bot score (0=human, >0=bot)"
+            data_type: int16
+
+          # ===================================================================
+          # TECHNICAL & MISC
+          # ===================================================================
+          - name: Params
+            description: "Additional event parameters"
+            data_type: utf8
+
+          - name: OriginalURL
+            description: "Original URL before redirects"
+            data_type: utf8
+
+          - name: PageCharset
+            description: "Page character set"
+            data_type: utf8
+
+          - name: CodeVersion
+            description: "Tracking code version"
+            data_type: int32
+
+          - name: HID
+            description: "Hardware ID"
+            data_type: int32
+
+          - name: CLID
+            description: "Click ID"
+            data_type: int32
+
+          - name: WindowName
+            description: "Window ID"
+            data_type: int32
+
+          - name: OpenerName
+            description: "Opener window ID"
+            data_type: int32
+
+          - name: HistoryLength
+            description: "Browser history length"
+            data_type: int16
+
+          - name: HitColor
+            description: "Screen color depth code"
+            data_type: utf8
+
+          - name: ParamOrderID
+            description: "E-commerce order ID"
+            data_type: utf8
+
+          - name: ParamPrice
+            description: "Product price"
+            data_type: int64
+
+          - name: ParamCurrency
+            description: "Currency code"
+            data_type: utf8
+
+          - name: ParamCurrencyID
+            description: "Currency ID"
+            data_type: int16
+
+          - name: FromTag
+            description: "From tag"
+            data_type: utf8
+
+          - name: RefererHash
+            description: "Hash of referrer URL"
+            data_type: int64
+
+          - name: URLHash
+            description: "Hash of current URL"
+            data_type: int64
+
+          - name: WithHash
+            description: "Flag: URL has hash fragment"
+            data_type: int16
+
+          - name: IsOldCounter
+            description: "Flag: old counter version"
+            data_type: int16
+
+          - name: IsParameter
+            description: "Flag: parameterized event"
+            data_type: int16
+
+          - name: IsEvent
+            description: "Flag: event (not pageview)"
+            data_type: int16
+
+          - name: DontCountHits
+            description: "Flag: do not count this hit"
+            data_type: int16
+
+          - name: IsArtifical
+            description: "Flag: artificial event"
+            data_type: int16
+
+          - name: IsRefresh
+            description: "Flag: page refresh"
+            data_type: int16
+
+          - name: CookieEnable
+            description: "Flag: cookies enabled"
+            data_type: int16
+
+          - name: JavascriptEnable
+            description: "Flag: JavaScript enabled"
+            data_type: int16
+
+          - name: JavaEnable
+            description: "Flag: Java enabled"
+            data_type: int16
+
+          - name: FlashMajor
+            description: "Flash major version"
+            data_type: int16
+
+          - name: FlashMinor
+            description: "Flash minor version"
+            data_type: int16
+
+          - name: FlashMinor2
+            description: "Flash minor version (patch)"
+            data_type: utf8
+
+          - name: SilverlightVersion1
+            description: "Silverlight version 1"
+            data_type: int16
+
+          - name: SilverlightVersion2
+            description: "Silverlight version 2"
+            data_type: int16
+
+          - name: SilverlightVersion3
+            description: "Silverlight version 3"
+            data_type: int32
+
+          - name: SilverlightVersion4
+            description: "Silverlight version 4"
+            data_type: int16
+
+          - name: SocialNetwork
+            description: "Social network"
+            data_type: utf8
+
+          - name: SocialAction
+            description: "Social action (like, share)"
+            data_type: utf8
+
+          - name: SocialSourceNetworkID
+            description: "Social source network ID"
+            data_type: int16
+
+          - name: SocialSourcePage
+            description: "Social source page"
+            data_type: utf8
+
+          - name: SendTiming
+            description: "Send timing (ms)"
+            data_type: int32
+
+          - name: DNSTiming
+            description: "DNS timing (ms)"
+            data_type: int32
+
+          - name: ConnectTiming
+            description: "Connect timing (ms)"
+            data_type: int32
+
+          - name: ResponseStartTiming
+            description: "Response start timing (ms)"
+            data_type: int32
+
+          - name: ResponseEndTiming
+            description: "Response end timing (ms)"
+            data_type: int32
+
+          - name: FetchTiming
+            description: "Fetch timing (ms)"
+            data_type: int32
+
+          - name: HTTPError
+            description: "HTTP error code"
+            data_type: int16
+
+          - name: IPNetworkID
+            description: "IP network ID"
+            data_type: int32
+
+          - name: RemoteIP
+            description: "Remote IP (as int)"
+            data_type: int32
+
+          - name: RefererCategoryID
+            description: "Referrer category ID"
+            data_type: int16
+
+          - name: RefererRegionID
+            description: "Referrer region ID"
+            data_type: int32
+
+          - name: URLCategoryID
+            description: "URL category ID"
+            data_type: int16
+
+          - name: URLRegionID
+            description: "URL region ID"
+            data_type: int32

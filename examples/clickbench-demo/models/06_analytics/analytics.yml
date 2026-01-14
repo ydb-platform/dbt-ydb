@@ -1,0 +1,10 @@
+# models/06_analytics/06_analytics.yml
+
+version: 2
+
+models:
+  - name: clicks_demo_sample
+    description: "Small, stable dataset for demo and presentation. Filtered by fixed date for consistency and efficiency."
+
+  - name: rpt_kpi_last_week
+    description: "Ready-to-BI dashboard with KPIs. For Tableau/Superset connection."

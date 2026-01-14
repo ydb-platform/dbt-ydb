@@ -1,0 +1,94 @@
+name: "clickbench-demo"
+version: "1.0.0"
+config-version: 2
+
+model-paths: ["models"]
+snapshot-paths: ["snapshots"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+
+target-path: "target"
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+models:
+  
+  # Global materialization default
+  +materialized: view
+
+  clickbench-demo:
+
+    # Layer: 01_raw
+    # Purpose: Direct wrapper over source. No logic, no transformations.
+    # Used to isolate source dependency and enable testing.
+    01_raw:
+      +materialized: view
+      +schema: 01_raw
+
+    # Layer: 02_base
+    # Purpose: Normalized view of raw data. Renames, casts, NULLIF, trimming.
+    # All downstream models should depend on base/, not raw/.
+    02_base:
+      +materialized: view
+      +schema: 02_base
+      +tags: ["base"]
+
+    # Layer: 03_staging
+    # Purpose: Cleaned, validated, and type-converted copy of source data.
+    # Models are atomic, source-aligned, and designed to be incremental if the source supports it.
+    # No business logic, no aggregations. Ready for joining in downstream layers.
+    03_staging:
+      +materialized: incremental
+      +schema: 03_staging
+      +tags: ["staging"]
+      +incremental_strategy: merge
+      +on_schema_change: append_new_columns
+
+    # Layer: 04_intermediate
+    # Purpose: Business-oriented derived entities and contextual enrichment.
+    #
+    # This layer transforms atomic events into reusable business constructs:
+    # - Sessionization (user journeys)
+    # - URL and referrer parsing
+    # - Device, traffic, and user context enrichment
+    #
+    # Models may be incremental (if based on time partitions) or full-refresh (if using window functions).
+    # No final business logic — only preparation for 05_marts.
+    # Designed for reusability, clarity, and performance.
+    04_intermediate:
+      +materialized: incremental
+      +schema: 04_intermediate
+      +tags: ["intermediate"]
+      +incremental_strategy: merge
+      +on_schema_change: sync_all_columns
+
+    # Layer: 05_marts
+    # Purpose: Semantic models (fct_, dim_, mrt_).
+    # Business logic, stable, reusable.
+    05_marts:
+      +schema: 05_marts
+      +tags: ["marts"]
+
+      fcts:
+        +materialized: view
+      aggs:
+        +materialized: incremental
+        +incremental_strategy: merge
+
+    # Layer: 06_analytics
+    # Purpose: Final views for BI tools (Superset, Tableau).
+    # Flat, wide, business-friendly.
+    06_analytics:
+      +materialized: view
+      +schema: 06_analytics
+      +tags: ["analytics"]
+
+# Snapshots
+# Stored in snapshots schema, use timestamp strategy by default.
+snapshots:
+  clickbench-demo:
+    +target_schema: 'clickbench-demo/snapshots'
+    +strategy: timestamp

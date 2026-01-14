@@ -1,0 +1,181 @@
+version: 2
+
+models:
+  - name: stg_clicks
+    description: >
+      Staging model for core click events. Materialized as incremental table with MERGE strategy.
+      Primary key matches source YDB table: (watch_id, event_time, event_date, counter_id, user_id).
+      Boolean fields are stored as Int8 (0/1) due to YDB columnar limitations, but preserve logical type.
+    config:
+      primary_key: "event_id, event_time, event_date, counter_id, user_id"
+      store_type: column
+      tags: ["staging", "incremental"]
+
+    columns:
+
+      - name: last_modified_at
+        description: "Timestamp when row was updated last time by ETL"
+        data_type: Timestamp
+        tests:
+          - not_null
+
+      # === Primary Key ===
+      - name: event_id
+        type: Int64
+        description: "Original session-like identifier from source table"
+        tests:
+          - not_null
+
+      - name: event_time
+        type: Timestamp
+        description: "Event timestamp (UTC), part of primary key"
+        tests:
+          - not_null
+
+      - name: event_date
+        type: Date
+        description: "Event date, part of primary key and YDB partitioning key"
+        tests:
+          - not_null
+
+      - name: counter_id
+        type: Int32
+        description: "Website counter identifier, part of primary key"
+        tests:
+          - not_null
+
+      - name: user_id
+        type: Int64
+        description: "User identifier, part of primary key"
+        tests:
+          - not_null
+
+      # === Traffic ===
+      - name: traffic_source_id
+        type: Int16
+        description: "Traffic source ID (EXAMPLE): 1=organic, 2=direct, 3=referral, 4=cpc, 5=cpm, 6=affiliates, 7=email, 8=social"
+        tests:
+          - accepted_values:
+              values: [-1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 11]
+              quote: false
+
+      - name: utm_source
+        type: Utf8
+        description: "UTM source (e.g. google, newsletter)"
+
+      - name: utm_medium
+        type: Utf8
+        description: "UTM medium (e.g. cpc, email)"
+
+      - name: utm_campaign
+        type: Utf8
+        description: "UTM campaign name"
+
+      - name: referrer_url
+        type: Utf8
+        description: "Full referrer URL"
+
+      # === Device ===
+      - name: is_mobile
+        type: Int8
+        description: "1 if mobile device, 0 otherwise"
+        meta:
+          logical_type: Bool
+        tests:
+          - accepted_values:
+              values: [0, 1]
+              quote: false
+
+      - name: os_id
+        type: Int16
+        description: "Operating system identifier"
+
+      - name: user_agent_id
+        type: Int16
+        description: "Browser identifier"
+
+      - name: region_id
+        type: Int32
+        description: "Geographic region of user"
+
+      - name: age
+        type: Int16
+        description: "User age"
+
+      # === Page ===
+      - name: page_url
+        type: Utf8
+        description: "Full page URL"
+
+      - name: page_title
+        type: Utf8
+        description: "Page title at time of event"
+
+      # === Flags ===
+      - name: is_link_click
+        type: Int8
+        description: "1 if this was a link click"
+        meta:
+          logical_type: Bool
+        tests:
+          - accepted_values:
+              values: [0, 1]
+              quote: false
+
+      - name: is_download
+        type: Int8
+        description: "1 if this was a file download"
+        meta:
+          logical_type: Bool
+        tests:
+          - accepted_values:
+              values: [0, 1]
+              quote: false
+
+      - name: is_not_bounce
+        type: Int8
+        description: "1 if session has more than one hit"
+        meta:
+          logical_type: Bool
+        tests:
+          - accepted_values:
+              values: [0, 1]
+              quote: false
+
+      - name: is_good_event
+        type: Int8
+        description: "1 if event passed validation"
+        meta:
+          logical_type: Bool
+        tests:
+          - accepted_values:
+              values: [0, 1]
+              quote: false
+
+      # === E-commerce ===
+      - name: ecommerce_order_id
+        type: Utf8
+        description: "Order ID if present"
+
+      - name: product_price
+        type: Int64
+        description: "Product price in base currency units"
+
+      - name: currency_code
+        type: Utf8
+        description: "ISO currency code (e.g. USD)"
+
+      # === Internal ===
+      - name: robot_score
+        type: Int16
+        description: "Anti-bot score (higher = more likely bot)"
+
+      - name: javascript_enabled
+        type: Int8
+        description: "1 if JavaScript is enabled in browser"
+        meta:
+          logical_type: Bool
+        tests:
+          - accepted_values:
+              values: [0, 1]
+              quote: false

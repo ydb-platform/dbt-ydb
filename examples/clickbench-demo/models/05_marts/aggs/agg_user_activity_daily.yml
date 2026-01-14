@@ -1,0 +1,56 @@
+version: 2
+
+models:
+  - name: agg_user_activity_daily
+    description: >-
+      Atomic daily activity summary per user. Contains raw counts and aggregates
+      without business logic, thresholds, or derived flags. Designed to preserve
+      all information needed for marts to implement segmentation, attribution,
+      engagement, and conversion logic.
+    config:
+      primary_key: user_id, event_date
+      store_type: column
+
+    columns:
+      - name: user_id
+        description: "Unique identifier of the user"
+        tests:
+          - not_null
+
+      - name: event_date
+        description: "Date of activity (partition key)"
+        tests:
+          - not_null
+
+      - name: total_events
+        description: "Total number of valid events (is_good_event = 1) in the day"
+
+      - name: mobile_clicks
+        description: "Number of events where is_mobile = 1"
+
+      - name: desktop_clicks
+        description: "Number of events where is_mobile = 0"
+
+      - name: link_clicks
+        description: "Number of events where is_link_click = 1"
+
+      - name: downloads
+        description: "Number of events where is_download = 1"
+
+      - name: not_bounces
+        description: "Number of events where is_not_bounce = 1"
+
+      - name: bounces
+        description: "Number of events where is_not_bounce = 0"
+
+      - name: unique_pages_visited
+        description: "Number of distinct page_url values visited in the day"
+
+      - name: user_agent_id_unique_count
+        description: "Number of distinct user_agent_id values used in the day. Useful for detecting multi-browser or suspicious activity."
+
+      - name: first_event_at
+        description: "Timestamp of the first event in the day"
+
+      - name: last_event_at
+        description: "Timestamp of the last event in the day"

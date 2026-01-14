@@ -1,0 +1,237 @@
+version: 2
+
+models:
+  - name: int_clicks_parsed
+    description: >
+      Parsed version of click events with URL components decomposed.
+      No external enrichment — only parsing of existing string fields.
+      This is the base model for all downstream layers (05_marts, 06_analytics).
+      Do not reference stg_clicks directly beyond this point.
+    config:
+      primary_key: "event_id, event_time, event_date, counter_id, user_id"
+      tags: ["intermediate", "incremental", "url", "parsing"]
+      store_type: column
+
+    columns:
+
+      - name: last_modified_at
+        description: "Timestamp when row was updated last time by ETL"
+        data_type: Timestamp
+        tests:
+          - not_null
+
+      # === IDs ===
+      - name: event_id
+        type: Int64
+        description: "Unique event identifier (WatchID)"
+        tests:
+          - not_null
+
+      - name: user_id
+        type: Int64
+        description: "User identifier"
+        tests:
+          - not_null
+
+      - name: counter_id
+        type: Int32
+        description: "Counter (website) identifier"
+        tests:
+          - not_null
+
+      - name: event_time
+        type: Timestamp
+        description: "Event timestamp (UTC)"
+        tests:
+          - not_null
+
+      - name: event_date
+        type: Date
+        description: "Event date (for partitioning)"
+
+      # === URL: page ===
+      - name: page_url
+        type: Utf8
+        description: "Full page URL"
+
+      - name: page_domain
+        type: Utf8
+        description: "Domain extracted from page_url (e.g. 'shop.com')"
+
+      - name: page_path
+        type: Utf8
+        description: "Path extracted from page_url (e.g. '/catalog/product')"
+
+      - name: page_query
+        type: Utf8
+        description: "Query string from page_url (e.g. 'utm_source=google')"
+
+      - name: page_fragment
+        type: Utf8
+        description: "Fragment from page_url (e.g. 'reviews')"
+
+      # === URL: referrer ===
+      - name: referrer_url
+        type: Utf8
+        description: "Full referrer URL"
+
+      - name: referrer_domain
+        type: Utf8
+        description: "Domain extracted from referrer_url (e.g. 'google.com')"
+
+      - name: referrer_path
+        type: Utf8
+        description: "Path extracted from referrer_url"
+
+      - name: referrer_query
+        type: Utf8
+        description: "Query string from referrer_url"
+
+      - name: referrer_fragment
+        type: Utf8
+        description: "Fragment from referrer_url"
+
+      # === UTM from URL ===
+      - name: utm_source_from_url
+        type: Utf8
+        description: "utm_source extracted from page_url or referrer_url"
+
+      - name: utm_medium_from_url
+        type: Utf8
+        description: "utm_medium extracted from page_url or referrer_url"
+
+      - name: utm_campaign_from_url
+        type: Utf8
+        description: "utm_campaign extracted from page_url or referrer_url"
+
+      - name: utm_term_from_url
+        type: Utf8
+        description: "utm_term extracted from page_url or referrer_url"
+
+      - name: utm_content_from_url
+        type: Utf8
+        description: "utm_content extracted from page_url or referrer_url"
+
+      - name: referrer_utm_source
+        type: Utf8
+        description: "utm_source extracted from referrer_url"
+
+      - name: referrer_utm_medium
+        type: Utf8
+        description: "utm_medium extracted from referrer_url"
+
+      # === Page ===
+      - name: page_title
+        type: Utf8
+        description: "Page title at time of event"
+
+      - name: is_link_click
+        type: Int8
+        description: "1 if this was a link click"
+        meta:
+          logical_type: Bool
+        tests:
+          - accepted_values:
+              values: [0, 1]
+              quote: false
+
+      - name: is_download
+        type: Int8
+        description: "1 if this was a file download"
+        meta:
+          logical_type: Bool
+        tests:
+          - accepted_values:
+              values: [0, 1]
+              quote: false
+
+      - name: is_not_bounce
+        type: Int8
+        description: "1 if session has more than 1 hit"
+        meta:
+          logical_type: Bool
+        tests:
+          - accepted_values:
+              values: [0, 1]
+              quote: false
+
+      - name: is_good_event
+        type: Int8
+        description: "1 if event passed validation"
+        meta:
+          logical_type: Bool
+        tests:
+          - accepted_values:
+              values: [0, 1]
+              quote: false
+
+      # === E-commerce ===
+      - name: ecommerce_order_id
+        type: Utf8
+        description: "Order ID if present"
+
+      - name: product_price
+        type: Int64
+        description: "Product price in base currency units"
+
+      - name: currency_code
+        type: Utf8
+        description: "ISO currency code (e.g. USD)"
+
+      # === Mobile device ===
+      - name: is_mobile
+        type: Int8
+        description: "1 if mobile device, 0 otherwise"
+        meta:
+          logical_type: Bool
+        tests:
+          - accepted_values:
+              values: [0, 1]
+              quote: false
+
+      - name: os_id
+        type: Int16
+        description: "Operating system identifier"
+
+      - name: user_agent_id
+        type: Int16
+        description: "Browser identifier"
+
+      - name: region_id
+        type: Int32
+        description: "Geographic region of user"
+
+      - name: robot_score
+        type: Int16
+        description: "Anti-bot score (higher = more likely bot)"
+
+      - name: javascript_enabled
+        type: Int8
+        description: "1 if JavaScript is enabled in browser"
+        meta:
+          logical_type: Bool
+        tests:
+          - accepted_values:
+              values: [0, 1]
+              quote: false
+
+      # === Traffic ===
+      - name: traffic_source_id
+        type: Int16
+        description: "Traffic source ID (EXAMPLE): 1=organic, 2=direct, 3=referral, 4=cpc, 5=cpm, 6=affiliates, 7=email, 8=social"
+        tests:
+          - accepted_values:
+              values: [-1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 11]
+              quote: false
+
+      - name: utm_source
+        type: Utf8
+        description: "UTM source (e.g. google)"
+
+      - name: utm_medium
+        type: Utf8
+        description: "UTM medium (e.g. cpc)"
+
+      - name: utm_campaign
+        type: Utf8
+        description: "UTM campaign name"

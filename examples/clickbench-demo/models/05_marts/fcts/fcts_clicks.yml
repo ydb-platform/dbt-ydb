@@ -1,0 +1,183 @@
+version: 2
+
+models:
+  - name: fcts_clicks
+    description: >-
+      Final fact model of atomic click events. Contains all contextual attributes
+      derived from the raw hit data, including URL parsing, UTM extraction,
+      device classification, and traffic channel attribution.
+      This model serves as the single source of truth for click-level analysis
+      in marketing, product, and analytics teams.
+      No user-level aggregates — they belong to other marts or analytics layer.
+
+    columns:
+      - name: event_id
+        description: "Original session-like identifier from source table"
+        tests:
+          - not_null
+
+      - name: event_time
+        description: "Event timestamp (UTC)"
+        tests:
+          - not_null
+
+      - name: event_date
+        description: "Event date, used for partitioning"
+        tests:
+          - not_null
+
+      - name: user_id
+        description: "Identifier of the user"
+        tests:
+          - not_null
+
+      - name: counter_id
+        description: "Website counter identifier"
+
+      - name: page_url
+        description: "Full URL of the page"
+        tests:
+          - not_null
+
+      - name: page_title
+        description: "Page title at time of event"
+
+      - name: page_domain
+        description: "Host (domain) extracted from page_url using Url::GetHost"
+
+      - name: page_path
+        description: "Path extracted from page_url using Url::GetPath"
+
+      - name: referrer_url
+        description: "Full referrer URL"
+
+      - name: referrer_domain
+        description: "Host (domain) extracted from referrer_url"
+
+      - name: referrer_path
+        description: "Path extracted from referrer_url"
+
+      - name: utm_source
+        description: "UTM source from original event data"
+
+      - name: utm_medium
+        description: "UTM medium from original event data"
+
+      - name: utm_campaign
+        description: "UTM campaign from original event data"
+
+      - name: utm_source_from_url
+        description: "UTM source extracted from page_url query string"
+
+      - name: utm_medium_from_url
+        description: "UTM medium extracted from page_url query string"
+
+      - name: utm_campaign_from_url
+        description: "UTM campaign extracted from page_url query string"
+
+      - name: referrer_utm_source
+        description: "UTM source extracted from referrer_url query string"
+
+      - name: referrer_utm_medium
+        description: "UTM medium extracted from referrer_url query string"
+
+      - name: is_mobile
+        description: "1 if device is mobile, 0 otherwise"
+        meta:
+          logical_type: Bool
+        tests:
+          - accepted_values:
+              values: [0, 1]
+              quote: false
+
+      - name: device_type
+        description: "Device category: 'Mobile' or 'Desktop'"
+        tests:
+          - accepted_values:
+              values: ['Mobile', 'Desktop']
+
+      - name: is_link_click
+        description: "1 if this was a link click"
+        meta:
+          logical_type: Bool
+        tests:
+          - accepted_values:
+              values: [0, 1]
+              quote: false
+
+      - name: is_download
+        description: "1 if this was a file download"
+        meta:
+          logical_type: Bool
+        tests:
+          - accepted_values:
+              values: [0, 1]
+              quote: false
+
+      - name: is_not_bounce
+        description: "1 if session has more than one hit"
+        meta:
+          logical_type: Bool
+        tests:
+          - accepted_values:
+              values: [0, 1]
+              quote: false
+
+      - name: is_good_event
+        description: "1 if event passed validation"
+        meta:
+          logical_type: Bool
+        tests:
+          - accepted_values:
+              values: [0, 1]
+              quote: false
+
+      - name: javascript_enabled
+        description: "1 if JavaScript is enabled in browser"
+        meta:
+          logical_type: Bool
+        tests:
+          - accepted_values:
+              values: [0, 1]
+              quote: false
+
+      - name: traffic_source_id
+        description: "Traffic source ID (EXAMPLE): 1=organic, 2=direct, 3=referral, 4=cpc, 5=cpm, 6=affiliates, 7=email, 8=social"
+        tests:
+          - accepted_values:
+              values: [-1,0, 1, 2, 3, 4, 5, 6, 7, 8, 11]
+              quote: false
+
+      - name: traffic_channel
+        description: >-
+          High-level traffic channel classification: Paid, Organic, Direct, Referral.
+          Based on UTM parameters and referrer domain.
+        tests:
+          - accepted_values:
+              values: ['Paid', 'Organic', 'Direct', 'Referral']
+
+      - name: ecommerce_order_id
+        description: "Order ID if present"
+
+      - name: product_price
+        description: "Product price in base currency units"
+
+      - name: currency_code
+        description: "ISO currency code (e.g. USD)"
+
+      - name: os_id
+        description: "Operating system identifier"
+
+      - name: user_agent_id
+        description: "Browser identifier"
+
+      - name: region_id
+        description: "Geographic region of user"
+
+      - name: robot_score
+        description: "Anti-bot score (higher = more likely bot)"
+
+      - name: last_modified_at
+        description: "Timestamp when the row was last modified in source or by ETL"
+        tests:
+          - not_null

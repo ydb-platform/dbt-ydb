@@ -1,0 +1,9 @@
+version: 2
+
+models:
+  - name: int_users
+    description: No changes but it is important to create INT model to isolate STG tables. Materialized as a table to demonstate it. 
+    config:
+      materialized: table
+      primary_key: "user_id"
+      store_type: column

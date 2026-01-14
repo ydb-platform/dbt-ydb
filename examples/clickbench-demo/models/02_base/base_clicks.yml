@@ -1,0 +1,489 @@
+version: 2
+
+models:
+  - name: base_clicks
+    description: |
+      Normalized and cleaned view of raw clickstream data.
+      This model serves as the single source of truth for all downstream layers.
+
+      Key transformations:
+      - Column names converted to snake_case
+      - Text fields: TRIM + NULLIF(empty) → NULL
+      - Boolean flags: Int16 (0/1) → Bool (FALSE/TRUE)
+      - Data types aligned with semantic meaning and YDB best practices
+      - Sensitive or technical fields excluded (if any)
+
+      All staging and marts models should depend on this model, not raw.
+    config:
+      materialized: view
+      schema: 02_base
+      #persist_docs:
+        #relation: true
+        #columns: true
+      tags: ["base"]
+
+    columns:
+
+      - name: last_modified_at
+        description: "Timestamp when row was updated last time by ETL"
+        data_type: Timestamp
+        tests:
+          - not_null
+
+      # ===================================================================
+      # IDENTITY & TIME
+      # ===================================================================
+      - name: event_id
+        description: "Unique event identifier (from WatchID)"
+        data_type: Int64
+        tests:
+          - not_null
+
+      - name: user_id
+        description: "User identifier (from UserID)"
+        data_type: Int64
+        tests:
+          - not_null
+
+      - name: counter_id
+        description: "Tracking counter (site) identifier"
+        data_type: Int32
+        tests:
+          - not_null
+
+      - name: event_time
+        description: "UTC timestamp of the event"
+        data_type: Timestamp
+        tests:
+          - not_null
+
+      - name: event_date
+        description: "Event date (for partitioning and filtering)"
+        data_type: Date
+        tests:
+          - not_null
+
+      # ===================================================================
+      # TRAFFIC & MARKETING
+      # ===================================================================
+      - name: utm_source
+        description: "UTM source (e.g. google, yandex)"
+        data_type: Utf8
+
+      - name: utm_medium
+        description: "UTM medium (e.g. cpc, banner)"
+        data_type: Utf8
+
+      - name: utm_campaign
+        description: "UTM campaign name"
+        data_type: Utf8
+
+      - name: utm_content
+        description: "UTM content or A/B test variant"
+        data_type: Utf8
+
+      - name: utm_term
+        description: "UTM search term"
+        data_type: Utf8
+
+      - name: traffic_source_id
+        description: "Traffic source code (1=organic, 2=direct, etc.)"
+        data_type: Int16
+
+      - name: search_engine_id
+        description: "Search engine ID (1=Yandex, 2=Google)"
+        data_type: Int16
+
+      - name: search_phrase
+        description: "Search query that led to the page"
+        data_type: Utf8
+
+      - name: adv_engine_id
+        description: "Advertising system ID (e.g. 1=Yandex.Direct)"
+        data_type: Int16
+
+      - name: referrer_url
+        description: "Referrer URL"
+        data_type: Utf8
+
+      - name: openstat_service_name
+        description: "OpenStat: service name"
+        data_type: Utf8
+
+      - name: openstat_campaign_id
+        description: "OpenStat: campaign ID"
+        data_type: Utf8
+
+      - name: openstat_ad_id
+        description: "OpenStat: ad ID"
+        data_type: Utf8
+
+      - name: openstat_source_id
+        description: "OpenStat: source ID"
+        data_type: Utf8
+
+      # ===================================================================
+      # USER & DEVICE
+      # ===================================================================
+      - name: user_agent_id
+        description: "User-Agent identifier"
+        data_type: Int16
+
+      - name: user_agent_major
+        description: "User-Agent major version"
+        data_type: Int16
+
+      - name: user_agent_minor
+        description: "User-Agent minor version (stored as String in source)"
+        data_type: String
+
+      - name: os_id
+        description: "Operating system identifier"
+        data_type: Int16
+
+      - name: is_mobile
+        description: "TRUE if event originated from a mobile device"
+        data_type: Bool
+        tests:
+          - accepted_values:
+              values: [false, true]
+              quote: false
+
+      - name: mobile_phone_id
+        description: "Mobile phone model identifier"
+        data_type: Int16
+
+      - name: mobile_phone_model
+        description: "Mobile phone model name"
+        data_type: Utf8
+
+      - name: screen_width
+        description: "Screen width in pixels"
+        data_type: Int16
+
+      - name: screen_height
+        description: "Screen height in pixels"
+        data_type: Int16
+
+      - name: screen_color_depth
+        description: "Screen color depth"
+        data_type: Int16
+
+      - name: window_width
+        description: "Browser window width in pixels"
+        data_type: Int16
+
+      - name: window_height
+        description: "Browser window height in pixels"
+        data_type: Int16
+
+      - name: client_ip
+        description: "Client IP address (as 32-bit signed integer)"
+        data_type: Int32
+
+      - name: region_id
+        description: "User region (country, city)"
+        data_type: Int32
+
+      - name: client_timezone_offset
+        description: "Client time zone offset from UTC (minutes)"
+        data_type: Int16
+
+      - name: browser_language
+        description: "Browser language setting"
+        data_type: Utf8
+
+      - name: browser_country
+        description: "Browser country setting"
+        data_type: Utf8
+
+      # ===================================================================
+      # PAGE & BEHAVIOR
+      # ===================================================================
+      - name: page_url
+        description: "Current page URL"
+        data_type: Utf8
+
+      - name: page_title
+        description: "Page title"
+        data_type: Utf8
+
+      - name: is_link_click
+        description: "TRUE if user clicked on a link"
+        data_type: Bool
+        tests:
+          - accepted_values:
+              values: [false, true]
+              quote: false
+
+      - name: is_download
+        description: "TRUE if user initiated a file download"
+        data_type: Bool
+        tests:
+          - accepted_values:
+              values: [false, true]
+              quote: false
+
+      - name: is_not_bounce
+        description: "TRUE if user interacted (not a bounce)"
+        data_type: Bool
+        tests:
+          - accepted_values:
+              values: [false, true]
+              quote: false
+
+      - name: is_good_event
+        description: "TRUE if interaction is of high quality"
+        data_type: Bool
+        tests:
+          - accepted_values:
+              values: [false, true]
+              quote: false
+
+      # ===================================================================
+      # USER PROFILE
+      # ===================================================================
+      - name: age
+        description: "User age"
+        data_type: Int16
+
+      - name: sex
+        description: "1=male, 2=female, 0=not provided"
+        data_type: Int16
+        tests:
+          - accepted_values:
+              values: [0, 1, 2]
+              quote: false
+
+      - name: income_level
+        description: "User income level (0=unknown)"
+        data_type: Int16
+
+      - name: interests_bitmask
+        description: "User interests (bitmask or category ID)"
+        data_type: Int16
+
+      - name: robot_score
+        description: "Bot detection score (0=human)"
+        data_type: Int16
+
+      # ===================================================================
+      # TECHNICAL & MISC
+      # ===================================================================
+      - name: fingerprint_id
+        description: "Fingerprint-based unique user ID (FUniqID)"
+        data_type: Int64
+        tests:
+          - not_null
+
+      - name: additional_params
+        description: "Additional event parameters (JSON or key-value string)"
+        data_type: Utf8
+
+      - name: original_url
+        description: "Original URL before redirects"
+        data_type: Utf8
+
+      - name: page_charset
+        description: "Page character encoding"
+        data_type: Utf8
+
+      - name: tracking_code_version
+        description: "Version of the tracking code"
+        data_type: Int32
+
+      - name: hardware_id
+        description: "Hardware identifier"
+        data_type: Int32
+
+      - name: click_id
+        description: "Click identifier (CLID)"
+        data_type: Int32
+
+      - name: window_name
+        description: "Window identifier"
+        data_type: Int32
+
+      - name: opener_window_name
+        description: "Opener window identifier"
+        data_type: Int32
+
+      - name: browser_history_length
+        description: "Length of browser history"
+        data_type: Int16
+
+      - name: screen_color_code
+        description: "Screen color depth code"
+        data_type: Utf8
+
+      - name: ecommerce_order_id
+        description: "E-commerce order identifier"
+        data_type: Utf8
+
+      - name: product_price
+        description: "Product price in base currency units"
+        data_type: Int64
+
+      - name: currency_code
+        description: "Currency code (e.g. RUB, USD)"
+        data_type: Utf8
+
+      - name: currency_id
+        description: "Currency identifier"
+        data_type: Int16
+
+      - name: from_tag
+        description: "From tag"
+        data_type: Utf8
+
+      - name: referrer_url_hash
+        description: "Hash of the referrer URL"
+        data_type: Int64
+
+      - name: page_url_hash
+        description: "Hash of the current page URL"
+        data_type: Int64
+
+      - name: has_url_fragment
+        description: "TRUE if URL contains a fragment (#)"
+        data_type: Bool
+
+      - name: is_old_counter
+        description: "TRUE if old counter version was used"
+        data_type: Bool
+
+      - name: is_parameterized
+        description: "TRUE if event is parameterized"
+        data_type: Bool
+
+      - name: is_custom_event
+        description: "TRUE if event is not a pageview"
+        data_type: Bool
+
+      - name: is_ignored_hit
+        description: "TRUE if this hit should not be counted"
+        data_type: Bool
+
+      - name: is_artificial
+        description: "TRUE if event is artificial (not real user)"
+        data_type: Bool
+
+      - name: is_refresh
+        description: "TRUE if page was refreshed"
+        data_type: Bool
+
+      - name: cookies_enabled
+        description: "TRUE if cookies are enabled"
+        data_type: Bool
+
+      - name: javascript_enabled
+        description: "TRUE if JavaScript is enabled"
+        data_type: Bool
+
+      - name: java_enabled
+        description: "TRUE if Java is enabled"
+        data_type: Bool
+
+      - name: flash_major_version
+        description: "Flash major version"
+        data_type: Int16
+
+      - name: flash_minor_version
+        description: "Flash minor version"
+        data_type: Int16
+
+      - name: flash_patch_version
+        description: "Flash patch version (as string)"
+        data_type: Utf8
+
+      - name: silverlight_version_1
+        description: "Silverlight version 1"
+        data_type: Int16
+
+      - name: silverlight_version_2
+        description: "Silverlight version 2"
+        data_type: Int16
+
+      - name: silverlight_version_3
+        description: "Silverlight version 3"
+        data_type: Int32
+
+      - name: silverlight_version_4
+        description: "Silverlight version 4"
+        data_type: Int16
+
+      - name: social_network
+        description: "Social network name"
+        data_type: Utf8
+
+      - name: social_action
+        description: "Social action (like, share)"
+        data_type: Utf8
+
+      - name: social_source_network_id
+        description: "Social source network identifier"
+        data_type: Int16
+
+      - name: social_source_page
+        description: "Social source page URL"
+        data_type: Utf8
+
+      - name: client_event_time
+        description: "Client-side event timestamp"
+        data_type: Timestamp
+
+      - name: local_event_time
+        description: "Local event timestamp (with timezone)"
+        data_type: Timestamp
+
+      - name: send_timing
+        description: "Network send timing (ms)"
+        data_type: Int32
+
+      - name: dns_timing
+        description: "DNS resolution timing (ms)"
+        data_type: Int32
+
+      - name: connect_timing
+        description: "Connection establishment timing (ms)"
+        data_type: Int32
+
+      - name: response_start_timing
+        description: "Time to first byte (ms)"
+        data_type: Int32
+
+      - name: response_end_timing
+        description: "Full response download timing (ms)"
+        data_type: Int32
+
+      - name: fetch_timing
+        description: "Resource fetch timing (ms)"
+        data_type: Int32
+
+      - name: http_error_code
+        description: "HTTP error code (e.g. 404, 500)"
+        data_type: Int16
+
+      - name: ip_network_id
+        description: "IP network identifier"
+        data_type: Int32
+
+      - name: remote_ip
+        description: "Remote IP address (as integer)"
+        data_type: Int32
+
+      - name: referrer_category_id
+        description: "Referrer category identifier"
+        data_type: Int16
+
+      - name: referrer_region_id
+        description: "Referrer region identifier"
+        data_type: Int32
+
+      - name: page_category_id
+        description: "Page category identifier"
+        data_type: Int16
+
+      - name: page_region_id
+        description: "Page region identifier"
+        data_type: Int32

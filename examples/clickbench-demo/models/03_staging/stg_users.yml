@@ -1,0 +1,9 @@
+version: 2
+
+models:
+  - name: stg_users
+    description: >
+    config:
+      primary_key: "user_id"
+      store_type: column
+      tags: ["staging", "incremental"]
