@@ -11,6 +11,8 @@ from dbt.adapters.events.logging import AdapterLogger
 
 import ydb_dbapi as dbapi
 
+from ydb import BaseRequestSettings
+
 from typing import Any, Optional, Tuple, TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -129,6 +131,13 @@ class YDBConnectionManager(SQLConnectionManager):
                 credentials=credentials._get_ydb_credentials(),
                 root_certificates_path=credentials.root_certificates_path,
             )
+            request_settings = (
+                BaseRequestSettings()
+                    .with_cancel_after(31536000)  # 1 year
+                    .with_operation_timeout(31536000)
+                    .with_timeout(31536000)
+                )
+            handle.set_ydb_request_settings(request_settings)
             logger.debug("Connect success")
             connection.state = "open"
             connection.handle = handle
