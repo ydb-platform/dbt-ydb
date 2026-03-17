@@ -1,3 +1,6 @@
+* Use long timeout for queries
+* Support sql_header in views
+
 ## 0.0.12 ##
 * Ability to use nested schemas
 
