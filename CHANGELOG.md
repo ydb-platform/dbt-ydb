@@ -1,3 +1,4 @@
+## 0.0.13 ##
 * Use long timeout for queries
 * Support sql_header in views
 
