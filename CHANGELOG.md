@@ -1,3 +1,4 @@
+## 0.0.14 ##
 * Pass lib version to sdk header
 
 ## 0.0.13 ##
