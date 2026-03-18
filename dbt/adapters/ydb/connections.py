@@ -15,6 +15,8 @@ from ydb import BaseRequestSettings
 
 from typing import Any, Optional, Tuple, TYPE_CHECKING
 
+from .__version__ import version as YDB_DBT_VERSION
+
 if TYPE_CHECKING:
     import agate
 
@@ -130,6 +132,7 @@ class YDBConnectionManager(SQLConnectionManager):
                 protocol="grpcs" if credentials.secure else "grpc",
                 credentials=credentials._get_ydb_credentials(),
                 root_certificates_path=credentials.root_certificates_path,
+                _additional_sdk_headers=(f"dbt-ydb/{YDB_DBT_VERSION}",),
             )
             request_settings = (
                 BaseRequestSettings()
