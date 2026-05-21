@@ -3,8 +3,7 @@ from dbt.adapters.base.relation import BaseRelation
 from dbt.adapters.base.impl import ConstraintSupport, ConstraintType
 from dbt.adapters.cache import _make_ref_key_dict
 from dbt.adapters.events.types import SchemaCreation, SchemaDrop
-import dbt_common.clients
-from dbt_common.exceptions import DbtRuntimeError, CompilationError
+from dbt_common.exceptions import DbtRuntimeError
 from dbt_common.events.functions import fire_event
 from dbt.adapters.base.relation import InformationSchema
 
@@ -65,12 +64,24 @@ class YDBAdapter(SQLAdapter):
         return 'Double' if decimals else 'Int64'
 
     @classmethod
+    def convert_integer_type(cls, agate_table: "agate.Table", col_idx: int) -> str:
+        return 'Int64'
+
+    @classmethod
+    def convert_boolean_type(cls, agate_table: "agate.Table", col_idx: int) -> str:
+        return 'Bool'
+
+    @classmethod
     def convert_datetime_type(cls, agate_table: "agate.Table", col_idx: int) -> str:
         return 'DateTime'
 
     @classmethod
     def convert_date_type(cls, agate_table: "agate.Table", col_idx: int) -> str:
         return 'Date'
+
+    @classmethod
+    def convert_time_type(cls, agate_table: "agate.Table", col_idx: int) -> str:
+        return 'Interval'
 
     def list_relations_without_caching(
         self,
@@ -202,21 +213,46 @@ class YDBAdapter(SQLAdapter):
     @available
     def prepare_insert_values_from_csv(self, table):
         import agate
-        csv_funcs = [c.csvify for c in table._column_types]
+        import datetime
+        import json
+        from decimal import Decimal
+        from dbt_common.clients.agate_helper import Integer, Number
 
         out = []
+
+        def string_literal(val):
+            return json.dumps(str(val), ensure_ascii=False)
+
+        def datetime_literal(val):
+            if val.tzinfo is not None:
+                val = val.astimezone(datetime.timezone.utc).replace(tzinfo=None)
+            return f'DateTime({string_literal(f"{val.isoformat()}Z")})'
+
+        def interval_literal(val):
+            microseconds = int(val.total_seconds() * 1_000_000)
+            return f"DateTime::IntervalFromMicroseconds({microseconds})"
+
         def prepare_value(i, val):
+            if val is None:
+                return "NULL"
+
             ctype = table._column_types[i]
             if isinstance(ctype, agate.data_types.DateTime):
-                return f'DateTime("{val}Z")'
+                return datetime_literal(val)
             if isinstance(ctype, agate.data_types.Date):
-                return f'Date("{val}")'
-            if isinstance(ctype, dbt_common.clients.agate_helper.Number):
+                return f'Date({string_literal(val.isoformat())})'
+            if isinstance(ctype, agate.data_types.TimeDelta):
+                return interval_literal(val)
+            if isinstance(ctype, agate.data_types.Boolean):
+                return "true" if val else "false"
+            if isinstance(ctype, (Integer, Number, agate.data_types.Number)):
+                if isinstance(val, Decimal):
+                    return format(val, "f")
                 return f"{val}"
-            return f'"{val}"'
+            return string_literal(val)
 
         for row in table.rows:
-            out.append(f"({', '.join(prepare_value(i, csv_funcs[i](d)) for i, d in enumerate(row))})")
+            out.append(f"({', '.join(prepare_value(i, d) for i, d in enumerate(row))})")
 
         return ",".join(out)
 
