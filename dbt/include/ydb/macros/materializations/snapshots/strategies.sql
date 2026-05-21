@@ -1,8 +1,5 @@
 {% macro ydb__snapshot_hash_arguments(args) -%}
-    Digest::Md5Hex({%- for arg in args -%}
-        coalesce(cast({{ arg }} as varchar ), '')
-        {% if not loop.last %} || '|' || {% endif %}
-    {%- endfor -%})
+Digest::Md5Hex({%- for arg in args -%}coalesce(cast({{ arg }} as varchar), ''){% if not loop.last %} || '|' || {% endif %}{%- endfor -%})
 {%- endmacro %}
 
 
@@ -19,12 +16,12 @@
 
     {% set column_added, check_cols = snapshot_check_all_get_existing_columns(node, target_exists, check_cols_config) %}
 
-    {%- set row_changed_expr -%}
+    {% set row_changed_expr %}
     (
-    {%- if column_added -%}
+    {% if column_added %}
         {{ get_true_sql() }}
-    {%- else -%}
-    {%- for col in check_cols -%}
+    {% else %}
+    {% for col in check_cols %}
         {{ snapshotted_rel }}.{{ col }} != {{ current_rel }}.{{ col }}
         or
         (
@@ -32,11 +29,11 @@
             or
             ((not ({{ snapshotted_rel }}.{{ col }} is null)) and ({{ current_rel }}.{{ col }} is null))
         )
-        {%- if not loop.last %} or {% endif -%}
-    {%- endfor -%}
-    {%- endif -%}
+        {% if not loop.last %}or{% endif %}
+    {% endfor %}
+    {% endif %}
     )
-    {%- endset %}
+    {% endset %}
 
     {% set scd_args = api.Relation.scd_args(primary_key, updated_at) %}
     {% set scd_id_expr = snapshot_hash_arguments(scd_args) %}

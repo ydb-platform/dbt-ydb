@@ -1,17 +1,16 @@
-name: Tests
+name: Nightly tests
 
 on:
-  push:
-    branches:
-      - master
-  pull_request:
+  schedule:
+    - cron: '0 2 * * *'
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     concurrency:
-      group: unit-${{ github.ref }}-${{ matrix.python-version }}
+      group: nightly-${{ github.ref }}-${{ matrix.python-version }}
       cancel-in-progress: true
 
     strategy:
