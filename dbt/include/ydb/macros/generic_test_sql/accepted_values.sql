@@ -11,14 +11,13 @@ from (
 ) all_values
 
 where value_field not in (
-    {% for value in values -%}
-        {% if quote -%}
+    {% for value in values %}
+        {% if quote %}
         '{{ value }}'
-        {%- else -%}
+        {% else %}
         {{ value }}
-        {%- endif -%}
-        {%- if not loop.last -%},{%- endif %}
-    {%- endfor %}
+        {% endif %}{{ "," if not loop.last }}
+    {% endfor %}
 )
 
 {% endmacro %}

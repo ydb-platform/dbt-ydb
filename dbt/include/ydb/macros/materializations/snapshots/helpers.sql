@@ -7,9 +7,9 @@
         {{ strategy.updated_at }} as {{ columns.dbt_updated_at }},
         {{ strategy.updated_at }} as {{ columns.dbt_valid_from }},
         {{ ydb__get_dbt_valid_to_current(strategy, columns) }}
-      {%- if strategy.hard_deletes == 'new_record' -%}
+      {% if strategy.hard_deletes == 'new_record' %}
         , 'False' as {{ columns.dbt_is_deleted }}
-      {% endif -%}
+      {% endif %}
     from (
         {{ sql }}
     ) sbq
@@ -39,46 +39,51 @@
 {% macro ydb__create_snapshot_table_as(temporary, relation, sql) -%}
   {%- set sql_header = config.get('sql_header', none) -%}
 
-  {% set columns = config.get('snapshot_table_column_names') or get_snapshot_table_column_names() %}
+  {%- set columns = config.get('snapshot_table_column_names') or get_snapshot_table_column_names() -%}
 
   {%- set primary_key_expr = config.get('primary_key', columns.dbt_scd_id) -%}
 
   {%- set store_type = config.get('store_type', 'row') -%}
+  {%- set table_options = ['STORE = ' ~ store_type] -%}
 
   {%- set auto_partitioning_by_size = model['config'].get('auto_partitioning_by_size') -%}
+  {%- if auto_partitioning_by_size is not none -%}
+    {%- do table_options.append('AUTO_PARTITIONING_BY_SIZE = ' ~ auto_partitioning_by_size) -%}
+  {%- endif -%}
+
   {%- set auto_partitioning_partition_size_mb = model['config'].get('auto_partitioning_partition_size_mb') -%}
+  {%- if auto_partitioning_partition_size_mb is not none -%}
+    {%- do table_options.append('AUTO_PARTITIONING_PARTITION_SIZE_MB = ' ~ auto_partitioning_partition_size_mb) -%}
+  {%- endif -%}
+
   {%- set ttl_expr = model['config'].get('ttl') -%}
+  {%- if ttl_expr is not none -%}
+    {%- do table_options.append('TTL = ' ~ ttl_expr) -%}
+  {%- endif -%}
 
   {{ sql_header if sql_header is not none }}
 
-  create {% if temporary: -%}temporary{%- endif %} table
-    {{ relation.include(database=(not temporary), schema=(not temporary)) }}
-  (primary key ({{ primary_key_expr }}))
-  {% set contract_config = config.get('contract') %}
-  {% if contract_config.enforced and (not temporary) %}
-    {{ get_assert_columns_equivalent(sql) }}
-    {{ get_table_columns_and_constraints() }}
-    {%- set sql = get_select_subquery(sql) %}
-  {% endif %}
-  WITH (
-    STORE = {{ store_type }}
-    {%- if auto_partitioning_by_size is not none -%}
-    , AUTO_PARTITIONING_BY_SIZE = {{ auto_partitioning_by_size }}
-    {%- endif -%}
-    {%- if auto_partitioning_partition_size_mb is not none -%}
-    , AUTO_PARTITIONING_PARTITION_SIZE_MB = {{ auto_partitioning_partition_size_mb }}
-    {%- endif -%}
-    {%- if ttl_expr is not none -%}
-    , TTL = {{ ttl_expr }}
-    {%- endif -%}
-  )
-  as
-  {{ sql }}
+create {% if temporary %}temporary {% endif %}table
+  {{ relation.include(database=(not temporary), schema=(not temporary)) }}
+(
+  primary key ({{ primary_key_expr }})
+)
+{%- set contract_config = config.get('contract') %}
+{% if contract_config.enforced and (not temporary) %}
+{{ get_assert_columns_equivalent(sql) }}
+{{ get_table_columns_and_constraints() }}
+  {%- set sql = get_select_subquery(sql) %}
+{% endif %}
+WITH (
+  {{ table_options | join(',\n  ') }}
+)
+as
+{{ sql }}
 
 {%- endmacro %}
 
 
-{% macro ydb__snapshot_staging_table(strategy, source_sql, target_relation) -%}
+{% macro ydb__snapshot_staging_table(strategy, source_sql, target_relation) %}
     {% set columns = config.get('snapshot_table_column_names') or get_snapshot_table_column_names() %}
     {% if strategy.hard_deletes == 'new_record' %}
         {% set new_scd_id = snapshot_hash_arguments([columns.dbt_scd_id, snapshot_get_time()]) %}
@@ -88,9 +93,9 @@
         select
             'insert' as dbt_change_type,
             `source_data`.*
-          {%- if strategy.hard_deletes == 'new_record' -%}
-            ,'False' as {{ columns.dbt_is_deleted }}
-          {%- endif %}
+          {% if strategy.hard_deletes == 'new_record' %}
+            , 'False' as {{ columns.dbt_is_deleted }}
+          {% endif %}
 
         from (
             select `source`.*, {{ unique_key_fields(strategy.unique_key) }},
@@ -119,7 +124,10 @@
             on {{ unique_key_join_on(strategy.unique_key, "snapshotted_data", "source_data") }}
             where {{ unique_key_is_null(strategy.unique_key, "snapshotted_data") }}
             or ({{ unique_key_is_not_null(strategy.unique_key, "snapshotted_data") }} and (
-               {{ strategy.row_changed }} {%- if strategy.hard_deletes == 'new_record' -%} or snapshotted_data.{{ columns.dbt_is_deleted }} = 'True' {% endif %}
+               {{ strategy.row_changed }}
+               {% if strategy.hard_deletes == 'new_record' %}
+               or snapshotted_data.{{ columns.dbt_is_deleted }} = 'True'
+               {% endif %}
             )
 
         )
@@ -129,10 +137,10 @@
         select
             'update' as dbt_change_type,
             source_data.*,
-            snapshotted_data.{{ columns.dbt_scd_id }} as {{ columns.dbt_scd_id }},
-          {%- if strategy.hard_deletes == 'new_record' -%}
+            snapshotted_data.{{ columns.dbt_scd_id }} as {{ columns.dbt_scd_id }}
+          {% if strategy.hard_deletes == 'new_record' %}
             , snapshotted_data.{{ columns.dbt_is_deleted }}
-          {%- endif %}
+          {% endif %}
 
         from (
             select `source`.*, {{ unique_key_fields(strategy.unique_key) }},
@@ -158,10 +166,13 @@
         ) as snapshotted_data
             on {{ unique_key_join_on(strategy.unique_key, "snapshotted_data", "source_data") }}
         where (
-            {{ strategy.row_changed }}  {%- if strategy.hard_deletes == 'new_record' -%} or snapshotted_data.{{ columns.dbt_is_deleted }} = 'True' {% endif %}
+            {{ strategy.row_changed }}
+            {% if strategy.hard_deletes == 'new_record' %}
+            or snapshotted_data.{{ columns.dbt_is_deleted }} = 'True'
+            {% endif %}
         )
     ) as updates
-    {%- if strategy.hard_deletes == 'invalidate' or strategy.hard_deletes == 'new_record' %}
+    {% if strategy.hard_deletes == 'invalidate' or strategy.hard_deletes == 'new_record' %}
     union all
     select `deletes`.* from (
         select
@@ -172,10 +183,10 @@
             {{ snapshot_get_time() }} as {{ columns.dbt_valid_from }},
             {{ snapshot_get_time() }} as {{ columns.dbt_updated_at }},
             {{ snapshot_get_time() }} as {{ columns.dbt_valid_to }},
-            snapshotted_data.{{ columns.dbt_scd_id }} as {{ columns.dbt_scd_id }},
-          {%- if strategy.hard_deletes == 'new_record' -%}
+            snapshotted_data.{{ columns.dbt_scd_id }} as {{ columns.dbt_scd_id }}
+          {% if strategy.hard_deletes == 'new_record' %}
             , snapshotted_data.{{ columns.dbt_is_deleted }}
-          {%- endif %}
+          {% endif %}
         from (
             select `target`.*, {{ unique_key_fields(strategy.unique_key) }}
             from {{ target_relation }} as target
@@ -197,16 +208,16 @@
             on {{ unique_key_join_on(strategy.unique_key, "snapshotted_data", "source_data") }}
             where {{ unique_key_is_null(strategy.unique_key, "source_data") }}
 
-            {%- if strategy.hard_deletes == 'new_record' %}
+            {% if strategy.hard_deletes == 'new_record' %}
             and not (
                 --avoid updating the record's valid_to if the latest entry is marked as deleted
                 snapshotted_data.{{ columns.dbt_is_deleted }} = 'True'
                 and snapshotted_data.{{ columns.dbt_valid_to }} is null
             )
-            {%- endif %}
+            {% endif %}
     ) as deletes
-    {%- endif %}
-    {%- if strategy.hard_deletes == 'new_record' %}
+    {% endif %}
+    {% if strategy.hard_deletes == 'new_record' %}
     union all
     select `deletion_records`.* from (
         select
@@ -215,20 +226,20 @@
                 If a column has been added to the source it won't yet exist in the
                 snapshotted table so we insert a null value as a placeholder for the column.
              #}
-            {%- for col in source_sql_cols -%}
-            {%- if col.name in snapshotted_cols -%}
+            {% for col in source_sql_cols %}
+            {% if col.name in snapshotted_cols %}
             snapshotted_data.{{ adapter.quote(col.column) }},
-            {%- else -%}
+            {% else %}
             NULL as {{ adapter.quote(col.column) }},
-            {%- endif -%}
-            {% endfor -%}
-            {%- if strategy.unique_key | is_list -%}
-                {%- for key in strategy.unique_key -%}
+            {% endif %}
+            {% endfor %}
+            {% if strategy.unique_key | is_list %}
+                {% for key in strategy.unique_key %}
             snapshotted_data.{{ key }} as dbt_unique_key_{{ loop.index }},
-                {% endfor -%}
-            {%- else -%}
+                {% endfor %}
+            {% else %}
             snapshotted_data.dbt_unique_key as dbt_unique_key,
-            {% endif -%}
+            {% endif %}
             {{ snapshot_get_time() }} as {{ columns.dbt_valid_from }},
             {{ snapshot_get_time() }} as {{ columns.dbt_updated_at }},
             snapshotted_data.{{ columns.dbt_valid_to }} as {{ columns.dbt_valid_to }},
@@ -260,7 +271,7 @@
             and snapshotted_data.{{ columns.dbt_valid_to }} is null
             )
     ) as deletion_records
-    {%- endif %}
+    {% endif %}
 
 
-{%- endmacro %}
+{% endmacro %}

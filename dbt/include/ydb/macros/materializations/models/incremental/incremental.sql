@@ -107,13 +107,13 @@
 
 {%- endmaterialization %}
 
-{% macro ydb__get_merge_sql(target, source, unique_key, dest_columns, incremental_predicates=none) -%}
-    {%- set predicates = [] if incremental_predicates is none else [] + incremental_predicates -%}
-    {%- set dest_cols_csv = get_quoted_csv(dest_columns | map(attribute="name")) -%}
-    {%- set merge_update_columns = config.get('merge_update_columns') -%}
-    {%- set merge_exclude_columns = config.get('merge_exclude_columns') -%}
-    {%- set update_columns = get_merge_update_columns(merge_update_columns, merge_exclude_columns, dest_columns) -%}
-    {%- set sql_header = config.get('sql_header', none) -%}
+{% macro ydb__get_merge_sql(target, source, unique_key, dest_columns, incremental_predicates=none) %}
+    {% set predicates = [] if incremental_predicates is none else [] + incremental_predicates %}
+    {% set dest_cols_csv = get_quoted_csv(dest_columns | map(attribute="name")) %}
+    {% set merge_update_columns = config.get('merge_update_columns') %}
+    {% set merge_exclude_columns = config.get('merge_exclude_columns') %}
+    {% set update_columns = get_merge_update_columns(merge_update_columns, merge_exclude_columns, dest_columns) %}
+    {% set sql_header = config.get('sql_header', none) %}
 
     {% if unique_key %}
         {% if unique_key is sequence and unique_key is not mapping and unique_key is not string %}
@@ -125,18 +125,22 @@
             {% endfor %}
         {% else %}
             {% set source_unique_key = ("DBT_INTERNAL_SOURCE." ~ unique_key) | trim %}
-	    {% set target_unique_key = ("DBT_INTERNAL_DEST." ~ unique_key) | trim %}
-	    {% set unique_key_match = equals(source_unique_key, target_unique_key) | trim %}
+            {% set target_unique_key = ("DBT_INTERNAL_DEST." ~ unique_key) | trim %}
+            {% set unique_key_match = equals(source_unique_key, target_unique_key) | trim %}
             {% do predicates.append(unique_key_match) %}
         {% endif %}
     {% else %}
         {% do predicates.append('FALSE') %}
     {% endif %}
 
-    {{ sql_header if sql_header is not none }}
+{% if sql_header is not none %}
+{{ sql_header }}
 
+{% endif %}
     upsert into {{ target }}
-    select {{ dest_cols_csv }} from {{ source }}
+    select
+        {{ dest_cols_csv }}
+    from {{ source }}
 
 {% endmacro %}
 
@@ -156,19 +160,18 @@
     {% set remove_columns = [] %}
   {% endif %}
 
+  {% set alter_clauses = [] %}
+  {% for column in add_columns %}
+    {% do alter_clauses.append('add column ' ~ column.name ~ ' ' ~ column.data_type) %}
+  {% endfor %}
+  {% for column in remove_columns %}
+    {% do alter_clauses.append('drop column ' ~ column.name) %}
+  {% endfor %}
+
   {% set sql -%}
-
-     alter {{ relation.type }} {{ relation.render() }}
-
-            {% for column in add_columns %}
-               add column {{ column.name }} {{ column.data_type }}{{ ',' if not loop.last }}
-            {% endfor %}{{ ',' if add_columns and remove_columns }}
-
-            {% for column in remove_columns %}
-                drop column {{ column.name }}{{ ',' if not loop.last }}
-            {% endfor %}
-
-  {%- endset -%}
+alter {{ relation.type }} {{ relation.render() }}
+  {{ alter_clauses | join(',\n  ') }}
+  {%- endset %}
 
   {% do run_query(sql) %}
 

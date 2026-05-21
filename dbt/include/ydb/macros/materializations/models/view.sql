@@ -86,10 +86,9 @@
 
   {{ sql_header if sql_header is not none }}
 
-  create view {{ relation.include(database=False) }}
-  with (security_invoker = TRUE)
-  as (
-    {{ sql }}
-  )
+create view {{ relation.include(database=False) }}
+with (security_invoker = TRUE)
+as ({{ sql }}
+)
 
 {%- endmacro %}
