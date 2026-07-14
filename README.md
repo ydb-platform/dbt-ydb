@@ -77,8 +77,15 @@ profile_name:
 | ------ | ----------- | -------- | ------- |
 | `primary_key` | Primary key expression to use during table creation | `yes` | |
 | `store_type` | Type of table. Available options are `row` and `column` | `no` | `row` |
+| `partition_by` | Columns for the `PARTITION BY <method> (...)` clause. Column-oriented tables only (`store_type='column'`) | `no` | |
+| `partition_method` | Partitioning method for `partition_by`. Currently YDB supports only `hash` | `no` | `hash` |
 | `auto_partitioning_by_size` | Enable automatic partitioning by size. Available options are `ENABLED` and `DISABLED` | `no` | |
+| `auto_partitioning_by_load` | Enable automatic partitioning by load. Available options are `ENABLED` and `DISABLED` | `no` | |
 | `auto_partitioning_partition_size_mb` | Partition size in megabytes for automatic partitioning | `no` | |
+| `auto_partitioning_min_partitions_count` | Minimum number of partitions | `no` | |
+| `auto_partitioning_max_partitions_count` | Maximum number of partitions | `no` | |
+| `uniform_partitions` | Number of pre-created uniform partitions (`Uint32`/`Uint64` keys) | `no` | |
+| `partition_at_keys` | Explicit partition boundary keys, e.g. `(100, 200, 300)` | `no` | |
 | `ttl` | Time-to-live (TTL) expression for automatic data expiration | `no` | |
 
 #### Incremental
@@ -88,8 +95,15 @@ profile_name:
 | `incremental_strategy` | Strategy of incremental materialization. Current adapter supports only `merge` strategy, which will use `YDB`'s `UPSERT` operation. | `no` | `default` |
 | `primary_key` | Primary key expression to use during table creation | `yes` | |
 | `store_type` | Type of table. Available options are `row` and `column` | `no` | `row` |
+| `partition_by` | Columns for the `PARTITION BY <method> (...)` clause. Column-oriented tables only (`store_type='column'`) | `no` | |
+| `partition_method` | Partitioning method for `partition_by`. Currently YDB supports only `hash` | `no` | `hash` |
 | `auto_partitioning_by_size` | Enable automatic partitioning by size. Available options are `ENABLED` and `DISABLED` | `no` | |
+| `auto_partitioning_by_load` | Enable automatic partitioning by load. Available options are `ENABLED` and `DISABLED` | `no` | |
 | `auto_partitioning_partition_size_mb` | Partition size in megabytes for automatic partitioning | `no` | |
+| `auto_partitioning_min_partitions_count` | Minimum number of partitions | `no` | |
+| `auto_partitioning_max_partitions_count` | Maximum number of partitions | `no` | |
+| `uniform_partitions` | Number of pre-created uniform partitions (`Uint32`/`Uint64` keys) | `no` | |
+| `partition_at_keys` | Explicit partition boundary keys, e.g. `(100, 200, 300)` | `no` | |
 | `ttl` | Time-to-live (TTL) expression for automatic data expiration | `no` | |
 
 ##### Example table configuration
@@ -108,6 +122,19 @@ select
     name,
     created_at
 from {{ ref('source_table') }}
+```
+
+##### Example column-oriented table with partitioning
+
+```sql
+{{ config(
+    primary_key='id',
+    store_type='column',
+    partition_by='id',
+    auto_partitioning_min_partitions_count=4
+) }}
+
+select id, name, created_at from {{ ref('source_table') }}
 ```
 
 #### Seed

@@ -1,4 +1,5 @@
 * Add cross-database utils macros
+* Support partitioning configuration for tables
 * Fix and extend seed types
 * Tidy generated SQL formatting
 
