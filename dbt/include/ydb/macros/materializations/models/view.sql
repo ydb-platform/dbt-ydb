@@ -88,7 +88,6 @@
 
 create view {{ relation.include(database=False) }}
 with (security_invoker = TRUE)
-as ({{ sql }}
-)
+as {{ sql }}
 
 {%- endmacro %}

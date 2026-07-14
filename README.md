@@ -23,8 +23,12 @@ pip install dbt-ydb
 - [x] Tests
 - [x] Incremental materializations (`merge` strategy only)
 - [x] Snapshots
+- [x] Cross-database (dbt "utils") macros: `dateadd`, `datediff`, `date_trunc`, `last_day`, `hash`, `split_part`, `concat`, `length`, `position`, `right`, `replace`, `bool_or`, `any_value`, `safe_cast`, `cast_bool_to_text`, `escape_single_quotes`, `type_*`, `except`, `intersect`, `array_construct`, `array_append`, `array_concat` (YDB `List<T>`)
 
 ## Limitations
+
+* `datediff` on sub-second dateparts (`microsecond`/`millisecond`) requires `Timestamp` inputs; `Date`/`Datetime` columns carry only second precision.
+* `type_float` / `type_numeric` / `type_boolean` / `type_timestamp` macros are available, but casting arbitrary string literals to these types follows YQL rules (e.g. a `Double` column cannot be a primary key).
 
 * `YDB` does not support CTE
 * `YDB` requires a primary key to be specified for its tables. See the configuration section for instructions on how to set it.
