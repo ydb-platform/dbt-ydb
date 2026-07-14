@@ -23,7 +23,7 @@ pip install dbt-ydb
 - [x] Tests
 - [x] Incremental materializations (`merge` strategy only)
 - [x] Snapshots
-- [x] Cross-database (dbt "utils") macros: `dateadd`, `datediff`, `date_trunc`, `last_day`, `hash`, `split_part`, `concat`, `length`, `position`, `right`, `replace`, `bool_or`, `any_value`, `safe_cast`, `cast_bool_to_text`, `escape_single_quotes`, `type_*`, `except`, `intersect`
+- [x] Cross-database (dbt "utils") macros: `dateadd`, `datediff`, `date_trunc`, `last_day`, `hash`, `split_part`, `concat`, `length`, `position`, `right`, `replace`, `bool_or`, `any_value`, `safe_cast`, `cast_bool_to_text`, `escape_single_quotes`, `type_*`, `except`, `intersect`, `array_construct`, `array_append`, `array_concat` (YDB `List<T>`)
 
 ## Limitations
 

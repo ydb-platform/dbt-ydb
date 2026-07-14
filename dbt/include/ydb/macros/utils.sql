@@ -51,6 +51,26 @@
     {%- endif -%}
 {%- endmacro %}
 
+-- ------------------------------------------------------------------ arrays --
+-- YDB List<T> containers. Elements are cast to `data_type` so empty and
+-- non-empty constructs unify under UNION / comparison.
+
+{% macro ydb__array_construct(inputs, data_type) -%}
+    {%- if inputs | length > 0 -%}
+        CAST(AsList({{ inputs | join(', ') }}) AS List<{{ data_type }}>)
+    {%- else -%}
+        ListCreate({{ data_type }})
+    {%- endif -%}
+{%- endmacro %}
+
+{% macro ydb__array_append(array, new_element) -%}
+    ListExtend({{ array }}, AsList({{ new_element }}))
+{%- endmacro %}
+
+{% macro ydb__array_concat(array_1, array_2) -%}
+    ListExtend({{ array_1 }}, {{ array_2 }})
+{%- endmacro %}
+
 -- --------------------------------------------------------------- aggregates --
 
 {#-- YDB's BOOL_OR propagates NULL ({false, null} -> null). Emulate the standard
