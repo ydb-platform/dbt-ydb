@@ -5,7 +5,6 @@
   {%- set existing_relation = load_cached_relation(this) -%}
 
   {%- set target_relation = this.incorporate(type='table') -%}
-  {%- set temp_relation = make_temp_relation(target_relation)-%}
   {%- set intermediate_relation = make_intermediate_relation(target_relation)-%}
   {%- set backup_relation_type = 'table' if existing_relation is none else existing_relation.type -%}
   {%- set backup_relation = make_backup_relation(target_relation, backup_relation_type) -%}
@@ -14,6 +13,12 @@
   {%- set unique_key = config.get('unique_key') -%}
   {%- set full_refresh_mode = (should_full_refresh()  or existing_relation.is_view) -%}
   {%- set on_schema_change = incremental_validate_on_schema_change(config.get('on_schema_change'), default='ignore') -%}
+
+  {#-- The temp relation stages the rows the UPSERT reads. As a view the model query
+       stays lazy and the data is written once, straight into the target; as a table
+       the result set is materialized first and then copied over. --#}
+  {%- set tmp_relation_type = ydb_incremental_tmp_relation_type() -%}
+  {%- set temp_relation = make_temp_relation(target_relation).incorporate(type=tmp_relation_type) -%}
 
   -- the temp_ and backup_ relations should not already exist in the database; get_relation
   -- will return None in that case. Otherwise, we get a relation that we can drop
@@ -44,15 +49,16 @@
       {% set relation_for_indexes = intermediate_relation %}
       {% set need_swap = true %}
   {% else %}
-    {% do run_query(get_create_table_as_sql(False, temp_relation, sql)) %}
+    {#-- A temp relation left over by a crashed run would break creation, and after a
+         `tmp_relation_type` switch it may even be of the other kind -- drop whatever
+         is actually there (the cache knows its real type). --#}
+    {% do drop_relation_if_exists(load_cached_relation(temp_relation) or temp_relation) %}
+    {% do run_query(ydb_create_incremental_tmp_relation_sql(temp_relation, sql, tmp_relation_type)) %}
     {% do to_drop.append(temp_relation) %}
     {% set relation_for_indexes = temp_relation %}
-    {% set contract_config = config.get('contract') %}
-    {% if not contract_config or not contract_config.enforced %}
-      {% do adapter.expand_target_column_types(
-               from_relation=temp_relation,
-               to_relation=target_relation) %}
-    {% endif %}
+    {#-- `expand_target_column_types` is deliberately not called here: `alter_column_type`
+         is a no-op in YDB, so it can only ever cost a round trip -- and with a view temp
+         relation reading its columns means running the model query one extra time. --#}
     {#-- Process schema changes. Returns dict of changes if successful. Use source columns for upserting/merging --#}
     {% set dest_columns = process_schema_changes(on_schema_change, temp_relation, existing_relation) %}
     {% if not dest_columns %}
@@ -107,13 +113,65 @@
 
 {%- endmaterialization %}
 
+
+{#--
+    Which kind of relation stages the rows for the UPSERT.
+
+    `view`  (default) -- the model query is wrapped in a view, so the UPSERT reads
+                         through it and the result set is written exactly once.
+    `table`           -- the pre-0.0.16 behaviour: materialize the result set into a
+                         temp table first, then copy it into the target. Slower, but
+                         it snapshots the source before the target is touched.
+--#}
+{% macro ydb_incremental_tmp_relation_type() %}
+  {%- set tmp_relation_type = config.get('tmp_relation_type', 'view') -%}
+
+  {%- if tmp_relation_type not in ['view', 'table'] -%}
+    {{ exceptions.raise_compiler_error(
+        "Invalid value for `tmp_relation_type`: '" ~ tmp_relation_type ~ "'. Expected 'view' or 'table'") }}
+  {%- endif -%}
+
+  {%- set contract_config = config.get('contract') -%}
+  {%- if tmp_relation_type == 'view' and contract_config and contract_config.enforced -%}
+    {#-- a view carries no column definitions, so the contract can only be asserted
+         against a real table --#}
+    {{ return('table') }}
+  {%- endif -%}
+
+  {{ return(tmp_relation_type) }}
+{% endmacro %}
+
+
+{% macro ydb_create_incremental_tmp_relation_sql(relation, sql, tmp_relation_type) %}
+  {%- if tmp_relation_type == 'view' -%}
+    {{ return(ydb_create_tmp_view_as_sql(relation, sql)) }}
+  {%- else -%}
+    {{ return(ydb__create_table_as(False, relation, sql, 'tmp_sql_header')) }}
+  {%- endif -%}
+{% endmacro %}
+
+
+{% macro ydb_create_tmp_view_as_sql(relation, sql) -%}
+  {%- set sql_header = ydb_get_sql_header('tmp_sql_header') -%}
+
+  {{ sql_header if sql_header is not none }}
+
+create view {{ relation.include(database=False) }}
+with (security_invoker = TRUE)
+as {{ sql }}
+
+{%- endmacro %}
+
+
 {% macro ydb__get_merge_sql(target, source, unique_key, dest_columns, incremental_predicates=none) %}
     {% set predicates = [] if incremental_predicates is none else [] + incremental_predicates %}
     {% set dest_cols_csv = get_quoted_csv(dest_columns | map(attribute="name")) %}
     {% set merge_update_columns = config.get('merge_update_columns') %}
     {% set merge_exclude_columns = config.get('merge_exclude_columns') %}
     {% set update_columns = get_merge_update_columns(merge_update_columns, merge_exclude_columns, dest_columns) %}
-    {% set sql_header = config.get('sql_header', none) %}
+    {#-- this statement has a plan of its own, so it takes `merge_sql_header` when the
+         model sets one and falls back to `sql_header` otherwise --#}
+    {% set sql_header = ydb_get_sql_header('merge_sql_header') %}
 
     {% if unique_key %}
         {% if unique_key is sequence and unique_key is not mapping and unique_key is not string %}

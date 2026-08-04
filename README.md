@@ -105,6 +105,57 @@ profile_name:
 | `uniform_partitions` | Number of pre-created uniform partitions (`Uint32`/`Uint64` keys) | `no` | |
 | `partition_at_keys` | Explicit partition boundary keys, e.g. `(100, 200, 300)` | `no` | |
 | `ttl` | Time-to-live (TTL) expression for automatic data expiration | `no` | |
+| `tmp_relation_type` | How the rows are staged for the `UPSERT`: as a `view` (the model query is read once, straight into the target) or as a `table` (the result set is materialized first, then copied) | `no` | `view` |
+| `merge_sql_header` | SQL header for the `UPSERT` statement. Replaces `sql_header` for that statement only | `no` | value of `sql_header` |
+| `tmp_sql_header` | SQL header for the statement that creates the temp relation. Replaces `sql_header` for that statement only | `no` | value of `sql_header` |
+
+##### Staging: view or table
+
+On an incremental run the adapter first stages the model's result set and then
+`UPSERT`s it into the target. By default the staging relation is a **view**, so the
+model query is planned into the `UPSERT` itself and the data is written exactly once:
+
+```sql
+create view `schema/model__dbt_tmp` with (security_invoker = TRUE) as select ... ;
+upsert into `schema/model` select `a`, `b` from `schema/model__dbt_tmp`;
+```
+
+Set `tmp_relation_type='table'` to go back to staging into a real table
+(`create table ... as select`, then `upsert ... from` it). That costs one extra full
+write plus a read of the same volume, but it reads the sources before the target is
+touched, which is what you want if:
+
+* the model query is non-deterministic or reads a source that keeps changing, and you
+  would rather it be snapshotted before the write starts;
+* the model reads `{{ this }}` and you do not want the read and the write of the target
+  to happen inside one query;
+* the single query that reads the sources and writes the target runs into transaction
+  limits.
+
+Model contracts always stage into a table -- a view carries no column definitions to
+assert the contract against.
+
+View staging needs a cluster with `CREATE VIEW` support; where views are not enabled,
+incremental models need `tmp_relation_type='table'`.
+
+##### Per-statement SQL headers
+
+Building a model takes more than one statement, and `sql_header` goes in front of every
+one of them. Statements differ in what they do and how they are planned, so a header
+that fits one of them is not necessarily valid for the next. `merge_sql_header` and
+`tmp_sql_header` replace `sql_header` for their own statement; an empty string means
+"no header here":
+
+```sql
+{{ config(
+    materialized='incremental',
+    unique_key='id',
+    primary_key='id',
+    sql_header='PRAGMA ydb.DisableBlockExecution = "true";',
+    merge_sql_header='',
+    tmp_sql_header=''
+) }}
+```
 
 ##### Example table configuration
 
