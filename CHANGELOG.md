@@ -1,3 +1,4 @@
+## 0.0.16 ##
 * Incremental models stage rows in a view instead of a temp table, so the dataset is written once
 * Add `tmp_relation_type` to opt back into staging via a temp table
 * Add per-statement SQL headers: `merge_sql_header` and `tmp_sql_header`
