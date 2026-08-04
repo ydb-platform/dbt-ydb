@@ -1,5 +1,5 @@
-{% macro ydb__create_table_as(temporary, relation, sql) -%}
-  {%- set sql_header = config.get('sql_header', none) -%}
+{% macro ydb__create_table_as(temporary, relation, sql, sql_header_key=none) -%}
+  {%- set sql_header = ydb_get_sql_header(sql_header_key) -%}
 
   {%- set primary_key_expr = model['config'].get('primary_key') -%}
   {%- if not primary_key_expr -%}

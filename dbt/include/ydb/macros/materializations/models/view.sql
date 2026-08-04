@@ -82,7 +82,7 @@
 {%- endmaterialization -%}
 
 {% macro ydb__create_view_as(relation, sql) -%}
-  {%- set sql_header = config.get('sql_header', none) -%}
+  {%- set sql_header = ydb_get_sql_header() -%}
 
   {{ sql_header if sql_header is not none }}
 

@@ -37,7 +37,7 @@
 {% endmacro %}
 
 {% macro ydb__create_snapshot_table_as(temporary, relation, sql) -%}
-  {%- set sql_header = config.get('sql_header', none) -%}
+  {%- set sql_header = ydb_get_sql_header('tmp_sql_header') -%}
 
   {%- set columns = config.get('snapshot_table_column_names') or get_snapshot_table_column_names() -%}
 
