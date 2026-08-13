@@ -21,7 +21,7 @@ pip install dbt-ydb
 - [x] Seeds
 - [x] Docs generate
 - [x] Tests
-- [x] Incremental materializations (`merge` strategy only)
+- [x] Incremental materializations (`merge` and `microbatch` strategies)
 - [x] Snapshots
 - [x] Cross-database (dbt "utils") macros: `dateadd`, `datediff`, `date_trunc`, `last_day`, `hash`, `split_part`, `concat`, `length`, `position`, `right`, `replace`, `bool_or`, `any_value`, `safe_cast`, `cast_bool_to_text`, `escape_single_quotes`, `type_*`, `except`, `intersect`, `array_construct`, `array_append`, `array_concat` (YDB `List<T>`)
 
@@ -92,7 +92,7 @@ profile_name:
 
 | Option | Description | Required | Default |
 | ------ | ----------- | -------- | ------- |
-| `incremental_strategy` | Strategy of incremental materialization. Current adapter supports only `merge` strategy, which will use `YDB`'s `UPSERT` operation. | `no` | `default` |
+| `incremental_strategy` | Strategy of incremental materialization: `merge`, which writes the model's rows with `YDB`'s `UPSERT`, or [`microbatch`](#microbatch), which does the same one time window at a time | `no` | `default` (same as `merge`) |
 | `primary_key` | Primary key expression to use during table creation | `yes` | |
 | `store_type` | Type of table. Available options are `row` and `column` | `no` | `row` |
 | `partition_by` | Columns for the `PARTITION BY <method> (...)` clause. Column-oriented tables only (`store_type='column'`) | `no` | |
@@ -108,6 +108,56 @@ profile_name:
 | `tmp_relation_type` | How the rows are staged for the `UPSERT`: as a `view` (the model query is read once, straight into the target) or as a `table` (the result set is materialized first, then copied) | `no` | `view` |
 | `merge_sql_header` | SQL header for the `UPSERT` statement. Replaces `sql_header` for that statement only | `no` | value of `sql_header` |
 | `tmp_sql_header` | SQL header for the statement that creates the temp relation. Replaces `sql_header` for that statement only | `no` | value of `sql_header` |
+
+##### Microbatch
+
+`incremental_strategy='microbatch'` builds the model one time window at a time instead
+of in a single query, which is what makes a large backfill (and a re-run of one bad day
+of it) fit into a database at all. It is configured with dbt's own
+[microbatch](https://docs.getdbt.com/docs/build/incremental-microbatch) keys -- the
+adapter adds no keys of its own:
+
+```sql
+{{ config(
+    materialized='incremental',
+    incremental_strategy='microbatch',
+    primary_key='id',
+    event_time='created_at',
+    batch_size='day',
+    begin=modules.datetime.datetime(2025, 1, 1)
+) }}
+
+select id, name, created_at
+from {{ ref('events') }}
+```
+
+dbt cuts `[begin, now)` into batches of `batch_size`, and runs the model once per batch
+with every input that declares an `event_time` filtered down to that batch's window. A
+batch owns its window in the target, so the adapter clears the window and writes the
+batch's rows into it:
+
+```sql
+delete from `schema/model`
+where created_at >= Timestamp("2025-01-02T00:00:00Z")
+  and created_at < Timestamp("2025-01-03T00:00:00Z");
+
+upsert into `schema/model` select `id`, `name`, `created_at` from `schema/model__dbt_tmp_20250102`;
+```
+
+Both statements are one script, so YDB runs them as a single transaction. That is what
+makes a batch re-runnable: rows that left the window since the last run disappear from
+the target instead of lingering there, and a batch can be replayed as many times as
+needed -- `dbt run --event-time-start 2025-01-02 --event-time-end 2025-01-04` rebuilds
+just those two days.
+
+Notes specific to YDB:
+
+* `event_time` may be a `Date`, `Datetime` or `Timestamp` column; the window is compared
+  against `Timestamp` literals, which YQL accepts for all three;
+* `incremental_predicates`, if the model sets any, narrow the `DELETE` further. Write them
+  against plain column names (`created_at > ...`): YQL takes no alias after `DELETE FROM`,
+  so the `DBT_INTERNAL_DEST.` prefix dbt's docs use for other databases does not compile
+  here.
 
 ##### Staging: view or table
 
