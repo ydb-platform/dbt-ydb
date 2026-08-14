@@ -1,3 +1,4 @@
+## 0.0.17 ##
 * Support the `microbatch` incremental strategy
 
 ## 0.0.16 ##
