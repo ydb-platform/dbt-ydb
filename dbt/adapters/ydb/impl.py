@@ -16,6 +16,8 @@ from dbt.adapters.ydb import YDBConnectionManager
 from dbt.adapters.ydb.column import YDBColumn
 from dbt.adapters.ydb.relation import YDBRelation
 
+from dbt.adapters.ydb import literals
+
 from typing import Any, Dict, FrozenSet, List, TYPE_CHECKING, Optional, Set, Tuple
 
 
@@ -330,7 +332,12 @@ class YDBAdapter(SQLAdapter):
         """The set of standard builtin strategies which this adapter supports out-of-the-box.
         Not used to validate custom strategies defined by end users.
         """
-        return ["merge"]
+        return ["merge", "microbatch"]
+
+    @available
+    def timestamp_literal(self, value) -> str:
+        """Renders a datetime as a YQL literal, for macros building datetime predicates."""
+        return literals.timestamp_literal(value)
 
     @available.parse_none
     def get_column_schema_from_query(self, sql: str, *_) -> List[YDBColumn]:

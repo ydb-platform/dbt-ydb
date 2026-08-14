@@ -1,3 +1,5 @@
+* Support the `microbatch` incremental strategy
+
 ## 0.0.16 ##
 * Incremental models stage rows in a view instead of a temp table, so the dataset is written once
 * Add `tmp_relation_type` to opt back into staging via a temp table

@@ -1,6 +1,8 @@
 from dataclasses import dataclass, field
 
-from dbt.adapters.base.relation import BaseRelation, Policy
+from dbt.adapters.base.relation import BaseRelation, EventTimeFilter, Policy
+
+from dbt.adapters.ydb.literals import timestamp_literal
 
 
 @dataclass
@@ -27,3 +29,23 @@ class YDBRelation(BaseRelation):
         if not self.quote_policy.identifier:
             return res
         return self.quoted(res)
+
+    def _render_event_time_filtered(self, event_time_filter: EventTimeFilter) -> str:
+        """The `[start, end)` window a microbatch input is read through.
+
+        Same window as the base implementation, but with YQL datetime literals: the
+        base one compares the event time column with a quoted string, which YQL
+        refuses to type-check against a Date/Datetime/Timestamp column.
+        """
+        conditions = []
+
+        if event_time_filter.start:
+            conditions.append(
+                f"{event_time_filter.field_name} >= {timestamp_literal(event_time_filter.start)}"
+            )
+        if event_time_filter.end:
+            conditions.append(
+                f"{event_time_filter.field_name} < {timestamp_literal(event_time_filter.end)}"
+            )
+
+        return " and ".join(conditions)
