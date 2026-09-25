@@ -1,3 +1,5 @@
+* Allow incremental staging tables to override table `WITH` options with `tmp_` model settings
+
 ## 0.0.17 ##
 * Support the `microbatch` incremental strategy
 

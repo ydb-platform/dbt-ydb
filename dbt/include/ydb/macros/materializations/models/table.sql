@@ -1,4 +1,4 @@
-{% macro ydb__create_table_as(temporary, relation, sql, sql_header_key=none) -%}
+{% macro ydb__create_table_as(temporary, relation, sql, sql_header_key=none, use_tmp_settings=false) -%}
   {%- set sql_header = ydb_get_sql_header(sql_header_key) -%}
 
   {%- set primary_key_expr = model['config'].get('primary_key') -%}
@@ -22,6 +22,9 @@
   ] -%}
   {%- for cfg_key, sql_key in with_settings -%}
     {%- set value = model['config'].get(cfg_key) -%}
+    {%- if use_tmp_settings and model['config'].get('tmp_' ~ cfg_key) is not none -%}
+      {%- set value = model['config'].get('tmp_' ~ cfg_key) -%}
+    {%- endif -%}
     {%- if value is not none -%}
       {%- do table_options.append(sql_key ~ ' = ' ~ value) -%}
     {%- endif -%}

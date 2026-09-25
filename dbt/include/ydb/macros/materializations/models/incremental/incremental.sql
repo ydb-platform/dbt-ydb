@@ -146,7 +146,7 @@
   {%- if tmp_relation_type == 'view' -%}
     {{ return(ydb_create_tmp_view_as_sql(relation, sql)) }}
   {%- else -%}
-    {{ return(ydb__create_table_as(False, relation, sql, 'tmp_sql_header')) }}
+    {{ return(ydb__create_table_as(False, relation, sql, 'tmp_sql_header', use_tmp_settings=true)) }}
   {%- endif -%}
 {% endmacro %}
 

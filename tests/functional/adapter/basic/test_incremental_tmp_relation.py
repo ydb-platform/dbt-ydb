@@ -31,6 +31,32 @@ class TestIncrementalTmpTableRelation(BaseIncremental):
         }
 
 
+class TestColumnTmpTablePartitionSettings:
+    @pytest.fixture(scope="class")
+    def models(self):
+        return {
+            "inc_partitioned.sql": """
+{{ config(
+    materialized='incremental',
+    primary_key='id',
+    unique_key='id',
+    store_type='column',
+    tmp_relation_type='table',
+    auto_partitioning_min_partitions_count=16,
+    tmp_auto_partitioning_min_partitions_count=8
+) }}
+select 1l as id, 'a'u as value
+"""
+        }
+
+    def test_staging_table_accepts_a_different_partition_count(self, project):
+        run_dbt(["run"])
+        run_dbt(["run"])
+
+        relation = relation_from_name(project.adapter, "inc_partitioned")
+        assert project.run_sql(f"select count(*) from {relation}", fetch="one")[0] == 1
+
+
 class TestIncrementalTmpRelationCleanup:
     @pytest.fixture(scope="class")
     def models(self):
