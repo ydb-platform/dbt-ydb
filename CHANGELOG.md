@@ -1,3 +1,4 @@
+## 0.0.18 ##
 * Allow incremental staging tables to override table `WITH` options with `tmp_` model settings
 
 ## 0.0.17 ##
