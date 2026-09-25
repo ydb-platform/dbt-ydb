@@ -106,6 +106,7 @@ profile_name:
 | `partition_at_keys` | Explicit partition boundary keys, e.g. `(100, 200, 300)` | `no` | |
 | `ttl` | Time-to-live (TTL) expression for automatic data expiration | `no` | |
 | `tmp_relation_type` | How the rows are staged for the `UPSERT`: as a `view` (the model query is read once, straight into the target) or as a `table` (the result set is materialized first, then copied) | `no` | `view` |
+| `tmp_<partitioning or TTL option>` | Override one of the partitioning or TTL options above for the staging table when `tmp_relation_type='table'`; for example, `tmp_auto_partitioning_min_partitions_count` | `no` | Corresponding table option |
 | `merge_sql_header` | SQL header for the `UPSERT` statement. Replaces `sql_header` for that statement only | `no` | value of `sql_header` |
 | `tmp_sql_header` | SQL header for the statement that creates the temp relation. Replaces `sql_header` for that statement only | `no` | value of `sql_header` |
 
@@ -181,6 +182,26 @@ touched, which is what you want if:
   to happen inside one query;
 * the single query that reads the sources and writes the target runs into transaction
   limits.
+
+The staging table inherits the target's `WITH` options unless a matching `tmp_` option
+is set. For example, to use 8 partitions for a column-oriented staging table while
+keeping 16 for the target:
+
+```yaml
+models:
+  my_project:
+    my_incremental_model:
+      +materialized: incremental
+      +primary_key: id
+      +store_type: column
+      +tmp_relation_type: table
+      +auto_partitioning_min_partitions_count: 16
+      +tmp_auto_partitioning_min_partitions_count: 8
+```
+
+`tmp_` overrides apply to the `auto_partitioning_*`, `uniform_partitions`,
+`partition_at_keys`, and `ttl` settings, but not to `primary_key`, `store_type`,
+or `partition_by`.
 
 Model contracts always stage into a table -- a view carries no column definitions to
 assert the contract against.

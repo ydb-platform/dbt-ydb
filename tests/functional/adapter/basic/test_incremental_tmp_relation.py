@@ -1,5 +1,7 @@
 import pytest
+from ydb import DescribeTableSettings
 
+from dbt.adapters.ydb.impl import YDBAdapter
 from dbt.tests.adapter.basic import files
 from dbt.tests.adapter.basic.test_incremental import BaseIncremental
 from dbt.tests.util import relation_from_name, run_dbt
@@ -29,6 +31,61 @@ class TestIncrementalTmpTableRelation(BaseIncremental):
             "incremental.sql": config_tmp_table + model_incremental,
             "schema.yml": files.schema_base_yml,
         }
+
+
+class TestColumnTmpTablePartitionSettings:
+    @staticmethod
+    def partition_count(connection, database, relation):
+        path = f"{database.rstrip('/')}/{relation.schema}/{relation.identifier}"
+        settings = DescribeTableSettings().with_include_table_stats(True)
+        # DB-API describe() omits table stats, so request them from its YDB driver.
+        table = connection._driver.table_client.describe_table(path, settings=settings)
+        return table.table_stats.partitions
+
+    @pytest.fixture(scope="class")
+    def models(self):
+        return {
+            "inc_partitioned.sql": """
+{{ config(
+    materialized='incremental',
+    primary_key='id',
+    unique_key='id',
+    store_type='column',
+    tmp_relation_type='table',
+    auto_partitioning_min_partitions_count=16,
+    tmp_auto_partitioning_min_partitions_count=8
+) }}
+select 1l as id, 'a'u as value
+"""
+        }
+
+    def test_staging_table_accepts_a_different_partition_count(self, project, monkeypatch):
+        run_dbt(["run"])
+
+        relation = relation_from_name(project.adapter, "inc_partitioned")
+        with project.adapter.connection_named("_inspect_target_partitions"):
+            connection = project.adapter.connections.get_thread_connection().handle
+            target_partitions = self.partition_count(connection, project.database, relation)
+        assert target_partitions == 16
+
+        staging_partition_counts = []
+        original_drop_relation = YDBAdapter.drop_relation
+
+        def inspect_staging_before_drop(adapter, relation):
+            if relation.identifier == "inc_partitioned__dbt_tmp":
+                connection = adapter.connections.get_thread_connection().handle
+                path = f"{relation.schema}/{relation.identifier}"
+                if connection.check_exists(path):
+                    staging_partition_counts.append(
+                        self.partition_count(connection, project.database, relation)
+                    )
+            return original_drop_relation(adapter, relation)
+
+        monkeypatch.setattr(YDBAdapter, "drop_relation", inspect_staging_before_drop)
+        run_dbt(["run"])
+
+        assert staging_partition_counts == [8]
+        assert project.run_sql(f"select count(*) from {relation}", fetch="one")[0] == 1
 
 
 class TestIncrementalTmpRelationCleanup:
